@@ -1,0 +1,258 @@
+<Window x:Class="EggClassifier.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="계란 품질 분류 시스템"
+        Height="720" Width="1280"
+        Background="{StaticResource BackgroundBrush}"
+        WindowStartupLocation="CenterScreen">
+
+    <Grid Margin="20">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="320"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- 왼쪽: 웹캠 영상 -->
+        <Border Grid.Column="0" Style="{StaticResource CardStyle}" Margin="0,0,15,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- 제목 -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+                    <TextBlock Text="📹 웹캠 영상"
+                               FontSize="18" FontWeight="Bold"
+                               Foreground="{StaticResource TextBrush}"/>
+                    <TextBlock Text="{Binding FpsText}"
+                               FontSize="14"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               VerticalAlignment="Center"
+                               Margin="15,0,0,0"/>
+                </StackPanel>
+
+                <!-- 웹캠 이미지 -->
+                <Border Grid.Row="1" Background="#000000" CornerRadius="5">
+                    <Image x:Name="WebcamImage"
+                           Source="{Binding CurrentFrame}"
+                           Stretch="Uniform"/>
+                </Border>
+
+                <!-- 로딩/안내 오버레이 -->
+                <Border Grid.Row="1"
+                        Background="#80000000"
+                        CornerRadius="5"
+                        Visibility="{Binding OverlayVisibility}">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <TextBlock Text="{Binding StatusMessage}"
+                                   FontSize="16"
+                                   Foreground="White"
+                                   TextAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- 오른쪽: 컨트롤 패널 -->
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- 모델 상태 -->
+            <Border Grid.Row="0" Style="{StaticResource CardStyle}" Margin="0,0,0,15">
+                <StackPanel>
+                    <TextBlock Text="🤖 모델 상태"
+                               FontSize="16" FontWeight="Bold"
+                               Foreground="{StaticResource TextBrush}"
+                               Margin="0,0,0,10"/>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Text="ONNX 모델"
+                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <Border Grid.Column="1"
+                                Background="{Binding ModelStatusColor}"
+                                CornerRadius="3"
+                                Padding="8,3">
+                            <TextBlock Text="{Binding ModelStatusText}"
+                                       Foreground="White"
+                                       FontSize="12"/>
+                        </Border>
+                    </Grid>
+
+                    <TextBlock Text="{Binding ModelPath}"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               FontSize="11"
+                               TextTrimming="CharacterEllipsis"
+                               Margin="0,5,0,0"
+                               ToolTip="{Binding ModelPath}"/>
+                </StackPanel>
+            </Border>
+
+            <!-- 컨트롤 버튼 -->
+            <Border Grid.Row="1" Style="{StaticResource CardStyle}" Margin="0,0,0,15">
+                <StackPanel>
+                    <TextBlock Text="⚙️ 컨트롤"
+                               FontSize="16" FontWeight="Bold"
+                               Foreground="{StaticResource TextBrush}"
+                               Margin="0,0,0,10"/>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Button Content="▶ 시작"
+                                Style="{StaticResource PrimaryButtonStyle}"
+                                Command="{Binding StartCommand}"
+                                IsEnabled="{Binding CanStart}"
+                                Margin="0,0,5,0"/>
+                        <Button Grid.Column="1"
+                                Content="⏹ 중지"
+                                Style="{StaticResource DangerButtonStyle}"
+                                Command="{Binding StopCommand}"
+                                IsEnabled="{Binding CanStop}"
+                                Margin="5,0,0,0"/>
+                    </Grid>
+
+                    <!-- 신뢰도 임계값 -->
+                    <StackPanel Margin="0,15,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="신뢰도 임계값"
+                                       Foreground="{StaticResource TextSecondaryBrush}"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding ConfidenceThreshold, StringFormat={}{0:P0}}"
+                                       Foreground="{StaticResource TextBrush}"/>
+                        </Grid>
+                        <Slider Minimum="0.1" Maximum="0.9"
+                                Value="{Binding ConfidenceThreshold}"
+                                TickFrequency="0.1"
+                                Margin="0,5,0,0"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- 탐지 결과 -->
+            <Border Grid.Row="2" Style="{StaticResource CardStyle}" Margin="0,0,0,15">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Text="📊 탐지 결과"
+                               FontSize="16" FontWeight="Bold"
+                               Foreground="{StaticResource TextBrush}"
+                               Margin="0,0,0,10"/>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <!-- 클래스별 카운트 -->
+                            <ItemsControl ItemsSource="{Binding ClassCounts}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <Border Width="12" Height="12"
+                                                    CornerRadius="2"
+                                                    Background="{Binding Color}"
+                                                    Margin="0,0,10,0"/>
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding ClassName}"
+                                                       Foreground="{StaticResource TextBrush}"/>
+                                            <TextBlock Grid.Column="2"
+                                                       Text="{Binding Count}"
+                                                       Foreground="{StaticResource TextBrush}"
+                                                       FontWeight="Bold"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- 구분선 -->
+                            <Border Height="1" Background="#444444" Margin="0,10"/>
+
+                            <!-- 현재 탐지 목록 -->
+                            <TextBlock Text="현재 프레임 탐지"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontSize="12"
+                                       Margin="0,0,0,8"/>
+
+                            <ItemsControl ItemsSource="{Binding CurrentDetections}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#3D3D3D"
+                                                CornerRadius="4"
+                                                Padding="8,5"
+                                                Margin="0,0,0,5">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <TextBlock Text="{Binding Label}"
+                                                           Foreground="{StaticResource TextBrush}"/>
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{Binding Confidence, StringFormat={}{0:P0}}"
+                                                           Foreground="{Binding ConfidenceColor}"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <TextBlock Text="탐지된 객체 없음"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontStyle="Italic"
+                                       Visibility="{Binding NoDetectionVisibility}"
+                                       Margin="0,5,0,0"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+
+            <!-- 총 탐지 수 -->
+            <Border Grid.Row="3" Style="{StaticResource CardStyle}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Text="총 탐지 수"
+                               FontSize="14"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding TotalDetections}"
+                               FontSize="28"
+                               FontWeight="Bold"
+                               Foreground="{StaticResource PrimaryBrush}"/>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>
