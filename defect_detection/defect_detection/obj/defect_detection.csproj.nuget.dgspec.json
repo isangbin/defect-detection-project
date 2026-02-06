@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\imleo\\source\\repos\\defect-detection-project\\defect_detection\\defect_detection\\defect_detection.csproj": {}
+    "C:\\Users\\ysb\\Desktop\\Csharp\\defect-detection-project\\defect_detection\\defect_detection\\defect_detection.csproj": {}
   },
   "projects": {
-    "C:\\Users\\imleo\\source\\repos\\defect-detection-project\\defect_detection\\defect_detection\\defect_detection.csproj": {
+    "C:\\Users\\ysb\\Desktop\\Csharp\\defect-detection-project\\defect_detection\\defect_detection\\defect_detection.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\imleo\\source\\repos\\defect-detection-project\\defect_detection\\defect_detection\\defect_detection.csproj",
+        "projectUniqueName": "C:\\Users\\ysb\\Desktop\\Csharp\\defect-detection-project\\defect_detection\\defect_detection\\defect_detection.csproj",
         "projectName": "defect_detection",
-        "projectPath": "C:\\Users\\imleo\\source\\repos\\defect-detection-project\\defect_detection\\defect_detection\\defect_detection.csproj",
-        "packagesPath": "C:\\Users\\imleo\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\imleo\\source\\repos\\defect-detection-project\\defect_detection\\defect_detection\\obj\\",
+        "projectPath": "C:\\Users\\ysb\\Desktop\\Csharp\\defect-detection-project\\defect_detection\\defect_detection\\defect_detection.csproj",
+        "packagesPath": "C:\\Users\\ysb\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\ysb\\Desktop\\Csharp\\defect-detection-project\\defect_detection\\defect_detection\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\imleo\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\ysb\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [

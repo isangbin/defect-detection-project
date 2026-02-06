@@ -1,6 +1,3 @@
 <Solution>
-  <Folder Name="/솔루션 항목/">
-    <File Path=".gitignore" />
-  </Folder>
   <Project Path="defect_detection/defect_detection.csproj" />
 </Solution>

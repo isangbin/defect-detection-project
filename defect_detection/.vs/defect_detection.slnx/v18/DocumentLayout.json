@@ -1,18 +1,14 @@
 {
   "Version": 1,
-  "WorkspaceRootPath": "C:\\Users\\imleo\\source\\repos\\defect-detection-project\\defect_detection\\",
+  "WorkspaceRootPath": "C:\\Users\\ysb\\Desktop\\Csharp\\defect-detection-project\\defect_detection\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{E479EE8A-41AE-4AE7-8EC4-21435809F0BE}|\uC194\uB8E8\uC158 \uD56D\uBAA9{E479EE8A-41AE-4AE7-8EC4-21435809F0BE}|C:\\Users\\imleo\\source\\repos\\defect-detection-project\\defect_detection\\.gitignore||{3B902123-F8A7-4915-9F01-361F908088D0}",
-      "RelativeMoniker": "D:0:0:{E479EE8A-41AE-4AE7-8EC4-21435809F0BE}|\uC194\uB8E8\uC158 \uD56D\uBAA9{E479EE8A-41AE-4AE7-8EC4-21435809F0BE}|solutionrelative:.gitignore||{3B902123-F8A7-4915-9F01-361F908088D0}"
+      "AbsoluteMoniker": "D:0:0:{8D77570E-4B3D-4E29-B7AD-E5463E8E59C9}|defect_detection\\defect_detection.csproj|c:\\users\\ysb\\desktop\\csharp\\defect-detection-project\\defect_detection\\defect_detection\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{8D77570E-4B3D-4E29-B7AD-E5463E8E59C9}|defect_detection\\defect_detection.csproj|solutionrelative:defect_detection\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{D73DE4A7-A4B1-A128-0202-DC4EEF4F412C}|defect_detection\\defect_detection.csproj|c:\\users\\imleo\\source\\repos\\defect-detection-project\\defect_detection\\defect_detection\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
-      "RelativeMoniker": "D:0:0:{D73DE4A7-A4B1-A128-0202-DC4EEF4F412C}|defect_detection\\defect_detection.csproj|solutionrelative:defect_detection\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{D73DE4A7-A4B1-A128-0202-DC4EEF4F412C}|defect_detection\\defect_detection.csproj|c:\\users\\imleo\\source\\repos\\defect-detection-project\\defect_detection\\defect_detection\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{D73DE4A7-A4B1-A128-0202-DC4EEF4F412C}|defect_detection\\defect_detection.csproj|solutionrelative:defect_detection\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{8D77570E-4B3D-4E29-B7AD-E5463E8E59C9}|defect_detection\\defect_detection.csproj|c:\\users\\ysb\\desktop\\csharp\\defect-detection-project\\defect_detection\\defect_detection\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{8D77570E-4B3D-4E29-B7AD-E5463E8E59C9}|defect_detection\\defect_detection.csproj|solutionrelative:defect_detection\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -21,24 +17,16 @@
       "VerticalTabListWidth": 256,
       "DocumentGroups": [
         {
-          "DockedWidth": 246,
-          "SelectedChildIndex": 2,
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
           "Children": [
             {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{b1e99781-ab81-11d0-b683-00aa00a3ee26}"
-            },
-            {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
-            },
-            {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 0,
               "Title": "MainWindow.xaml",
-              "DocumentMoniker": "C:\\Users\\imleo\\source\\repos\\defect-detection-project\\defect_detection\\defect_detection\\MainWindow.xaml",
+              "DocumentMoniker": "C:\\Users\\ysb\\Desktop\\Csharp\\defect-detection-project\\defect_detection\\defect_detection\\MainWindow.xaml",
               "RelativeDocumentMoniker": "defect_detection\\MainWindow.xaml",
-              "ToolTip": "C:\\Users\\imleo\\source\\repos\\defect-detection-project\\defect_detection\\defect_detection\\MainWindow.xaml",
+              "ToolTip": "C:\\Users\\ysb\\Desktop\\Csharp\\defect-detection-project\\defect_detection\\defect_detection\\MainWindow.xaml",
               "RelativeToolTip": "defect_detection\\MainWindow.xaml",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
               "WhenOpened": "2026-02-06T02:23:07.834Z",
@@ -46,42 +34,16 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 1,
               "Title": "MainWindow.xaml.cs",
-              "DocumentMoniker": "C:\\Users\\imleo\\source\\repos\\defect-detection-project\\defect_detection\\defect_detection\\MainWindow.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\ysb\\Desktop\\Csharp\\defect-detection-project\\defect_detection\\defect_detection\\MainWindow.xaml.cs",
               "RelativeDocumentMoniker": "defect_detection\\MainWindow.xaml.cs",
-              "ToolTip": "C:\\Users\\imleo\\source\\repos\\defect-detection-project\\defect_detection\\defect_detection\\MainWindow.xaml.cs",
+              "ToolTip": "C:\\Users\\ysb\\Desktop\\Csharp\\defect-detection-project\\defect_detection\\defect_detection\\MainWindow.xaml.cs",
               "RelativeToolTip": "defect_detection\\MainWindow.xaml.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-06T02:23:07.746Z"
-            }
-          ]
-        },
-        {
-          "DockedWidth": 154,
-          "SelectedChildIndex": 0,
-          "Children": [
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": ".gitignore",
-              "DocumentMoniker": "C:\\Users\\imleo\\source\\repos\\defect-detection-project\\defect_detection\\.gitignore",
-              "RelativeDocumentMoniker": ".gitignore",
-              "ToolTip": "C:\\Users\\imleo\\source\\repos\\defect-detection-project\\defect_detection\\.gitignore",
-              "RelativeToolTip": ".gitignore",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2026-02-06T04:44:51.759Z",
+              "WhenOpened": "2026-02-06T02:23:07.746Z",
               "EditorCaption": ""
-            },
-            {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{3ae79031-e1bc-11d0-8f78-00a0c9110057}"
-            },
-            {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{1c64b9c2-e352-428e-a56d-0ace190b99a6}"
             }
           ]
         }

@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("defect_detection")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3842560198553b9920b6f4ba070e22703f75add0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4d9007d5c2fd07c8368037be37988df240f30104")]
 [assembly: System.Reflection.AssemblyProductAttribute("defect_detection")]
 [assembly: System.Reflection.AssemblyTitleAttribute("defect_detection")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
