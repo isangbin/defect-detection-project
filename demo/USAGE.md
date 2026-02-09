@@ -32,13 +32,20 @@ pip install -r requirements.txt
 ```
 
 ### 1.2 데이터 변환 (XML → YOLO)
+
+AI Hub에서 다운받은 데이터가 Training/Validation으로 이미 분리되어 있는 경우:
+
 ```bash
-python convert_xml_to_yolo.py \
-    --images "다운받은_이미지_폴더_경로" \
-    --labels "다운받은_라벨_폴더_경로" \
-    --output "../data" \
-    --train-ratio 0.8
+python convert_xml_to_yolo.py ^
+    --train-images "D:\원천데이터\Training" ^
+    --train-labels "D:\라벨링데이터\Training" ^
+    --val-images "D:\원천데이터\Validation" ^
+    --val-labels "D:\라벨링데이터\Validation" ^
+    --output "../data"
 ```
+
+> **참고:** 위 경로는 예시입니다. 실제 AI Hub 데이터를 다운받은 경로로 변경하세요.
+> 이 스크립트는 이미지를 output 폴더로 복사하므로 디스크 용량이 충분한지 확인하세요.
 
 ### 1.3 모델 학습
 ```bash
@@ -129,28 +136,33 @@ dotnet run --configuration Release
 ## 파일 구조
 
 ```
-project_CSharp/
+demo/
 ├── training/                    # Python 학습 환경
-│   ├── convert_xml_to_yolo.py  # 데이터 변환
-│   ├── train.py                # 학습
-│   ├── export_onnx.py          # ONNX 내보내기
-│   └── requirements.txt        # 의존성
+│   ├── convert_xml_to_yolo.py  # AI Hub XML → YOLO 변환
+│   ├── train.py                # YOLOv8 학습 (SGD, argparse)
+│   ├── export_onnx.py          # ONNX 내보내기 + 검증
+│   └── requirements.txt        # Python 의존성
 │
-├── data/                        # 데이터
+├── data/                        # YOLO 데이터셋 (변환 후 생성됨)
+│   ├── data.yaml               # 데이터셋 설정
 │   ├── images/train/           # 학습 이미지
 │   ├── images/val/             # 검증 이미지
-│   ├── labels/train/           # 학습 라벨
-│   ├── labels/val/             # 검증 라벨
-│   └── data.yaml               # 데이터셋 설정
+│   ├── labels/train/           # 학습 라벨 (.txt)
+│   └── labels/val/             # 검증 라벨 (.txt)
 │
-├── models/                      # 학습된 모델
-│   └── egg_classifier.onnx     # ONNX 모델
+├── models/                      # 학습된 ONNX 모델
+│   └── egg_classifier.onnx     # (export 후 생성됨)
 │
 └── EggClassifier/              # C# WPF 프로젝트
     ├── Models/
-    │   └── YoloDetector.cs     # ONNX 추론 엔진
+    │   ├── YoloDetector.cs     # ONNX 추론 엔진 (Letterbox 전처리)
+    │   └── egg_classifier.onnx # (models/에서 복사)
     ├── Services/
-    │   └── WebcamService.cs    # 웹캠 서비스
-    └── ViewModels/
-        └── MainViewModel.cs    # MVVM ViewModel
+    │   └── WebcamService.cs    # 웹캠 캡처 서비스
+    ├── ViewModels/
+    │   └── MainViewModel.cs    # MVVM ViewModel
+    └── docs/                   # 상세 문서
+        ├── GUIDELINES.md       # 개발 가이드라인
+        ├── API_SPEC.md         # API 기능명세서
+        └── CODE_REFERENCE.md   # 코드 라인별 해설
 ```

@@ -57,6 +57,8 @@ def train_model(
         save_period=10,        # 10 에포크마다 저장
         plots=True,            # 학습 그래프 저장
         verbose=True,
+        optimizer='SGD',       # SGD 사용 (Muon 기본값은 RTX 3070 BF16 미지원으로 CUBLAS 에러 발생)
+        workers=4,             # 데이터 로딩 워커 수
         # 데이터 증강
         augment=True,
         hsv_h=0.015,           # 색조 변화
