@@ -5,17 +5,14 @@ namespace EggClassifier
 {
     public partial class MainWindow : Window
     {
-        private readonly MainViewModel _viewModel;
-
-        public MainWindow()
+        public MainWindow(MainViewModel viewModel)
         {
             InitializeComponent();
-            _viewModel = new MainViewModel();
-            DataContext = _viewModel;
+            DataContext = viewModel;
 
-            Closing += (s, e) =>
+            Loaded += (s, e) =>
             {
-                _viewModel.Dispose();
+                viewModel.NavigateToDetectionCommand.Execute(null);
             };
         }
     }

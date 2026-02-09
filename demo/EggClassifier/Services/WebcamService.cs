@@ -23,7 +23,7 @@ namespace EggClassifier.Services
     /// <summary>
     /// 웹캠 캡처 서비스
     /// </summary>
-    public class WebcamService : IDisposable
+    public class WebcamService : IWebcamService
     {
         private VideoCapture? _capture;
         private CancellationTokenSource? _cts;

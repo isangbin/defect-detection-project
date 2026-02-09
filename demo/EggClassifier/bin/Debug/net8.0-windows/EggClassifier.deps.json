@@ -9,6 +9,7 @@
       "EggClassifier/1.0.0": {
         "dependencies": {
           "CommunityToolkit.Mvvm": "8.2.2",
+          "Microsoft.Extensions.DependencyInjection": "8.0.1",
           "Microsoft.ML.OnnxRuntime": "1.16.3",
           "OpenCvSharp4": "4.9.0.20240103",
           "OpenCvSharp4.Extensions": "4.9.0.20240103",
@@ -25,6 +26,25 @@
           "lib/net6.0/CommunityToolkit.Mvvm.dll": {
             "assemblyVersion": "8.2.0.0",
             "fileVersion": "8.2.2.1"
+          }
+        }
+      },
+      "Microsoft.Extensions.DependencyInjection/8.0.1": {
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.2"
+        },
+        "runtime": {
+          "lib/net8.0/Microsoft.Extensions.DependencyInjection.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.0.1024.46610"
+          }
+        }
+      },
+      "Microsoft.Extensions.DependencyInjection.Abstractions/8.0.2": {
+        "runtime": {
+          "lib/net8.0/Microsoft.Extensions.DependencyInjection.Abstractions.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.0.1024.46610"
           }
         }
       },
@@ -311,6 +331,20 @@
       "sha512": "sha512-r0g0k9tGYdrnz8R7T3x5UiokDffeevzK/2P/9SBL6fqLgN8B157MIi/bVUWI1KAz6ZorZrK9AdABCWUeXZZsvA==",
       "path": "communitytoolkit.mvvm/8.2.2",
       "hashPath": "communitytoolkit.mvvm.8.2.2.nupkg.sha512"
+    },
+    "Microsoft.Extensions.DependencyInjection/8.0.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-BmANAnR5Xd4Oqw7yQ75xOAYODybZQRzdeNucg7kS5wWKd2PNnMdYtJ2Vciy0QLylRmv42DGl5+AFL9izA6F1Rw==",
+      "path": "microsoft.extensions.dependencyinjection/8.0.1",
+      "hashPath": "microsoft.extensions.dependencyinjection.8.0.1.nupkg.sha512"
+    },
+    "Microsoft.Extensions.DependencyInjection.Abstractions/8.0.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-3iE7UF7MQkCv1cxzCahz+Y/guQbTqieyxyaWKhrRO91itI9cOKO76OHeQDahqG4MmW5umr3CcCvGmK92lWNlbg==",
+      "path": "microsoft.extensions.dependencyinjection.abstractions/8.0.2",
+      "hashPath": "microsoft.extensions.dependencyinjection.abstractions.8.0.2.nupkg.sha512"
     },
     "Microsoft.ML.OnnxRuntime/1.16.3": {
       "type": "package",

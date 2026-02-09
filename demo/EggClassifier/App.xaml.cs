@@ -1,9 +1,42 @@
+using System;
 using System.Windows;
+using Microsoft.Extensions.DependencyInjection;
+using EggClassifier.Core;
+using EggClassifier.Features.Dashboard;
+using EggClassifier.Features.Detection;
+using EggClassifier.Features.Login;
+using EggClassifier.Services;
+using EggClassifier.ViewModels;
 
 namespace EggClassifier
 {
     public partial class App : Application
     {
+        private readonly IServiceProvider _serviceProvider;
+
+        public App()
+        {
+            var services = new ServiceCollection();
+
+            // Core
+            services.AddSingleton<INavigationService, NavigationService>();
+
+            // Services
+            services.AddSingleton<IWebcamService, WebcamService>();
+            services.AddSingleton<IDetectorService, DetectorService>();
+
+            // ViewModels
+            services.AddSingleton<MainViewModel>();
+            services.AddTransient<DetectionViewModel>();
+            services.AddTransient<LoginViewModel>();
+            services.AddTransient<DashboardViewModel>();
+
+            // Views
+            services.AddSingleton<MainWindow>();
+
+            _serviceProvider = services.BuildServiceProvider();
+        }
+
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
@@ -19,6 +52,9 @@ namespace EggClassifier
                 );
                 args.Handled = true;
             };
+
+            var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
+            mainWindow.Show();
         }
     }
 }

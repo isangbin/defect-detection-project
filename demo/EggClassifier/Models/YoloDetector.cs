@@ -12,17 +12,6 @@ using System.Linq;
 namespace EggClassifier.Models
 {
     /// <summary>
-    /// 탐지 결과 클래스
-    /// </summary>
-    public class Detection
-    {
-        public int ClassId { get; set; }
-        public string ClassName { get; set; } = string.Empty;
-        public float Confidence { get; set; }
-        public Rect BoundingBox { get; set; }
-    }
-
-    /// <summary>
     /// YOLOv8 ONNX 추론 엔진
     /// </summary>
     public class YoloDetector : IDisposable

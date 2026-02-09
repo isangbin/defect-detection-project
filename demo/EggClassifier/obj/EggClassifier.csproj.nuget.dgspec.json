@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\tedya\\source\\repos\\Smart_Factory\\project\\project_CSharp\\EggClassifier\\EggClassifier.csproj": {}
+    "C:\\Users\\tedya\\source\\repos\\Smart_Factory\\project\\project_Egg_Classification\\demo\\EggClassifier\\EggClassifier.csproj": {}
   },
   "projects": {
-    "C:\\Users\\tedya\\source\\repos\\Smart_Factory\\project\\project_CSharp\\EggClassifier\\EggClassifier.csproj": {
+    "C:\\Users\\tedya\\source\\repos\\Smart_Factory\\project\\project_Egg_Classification\\demo\\EggClassifier\\EggClassifier.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\tedya\\source\\repos\\Smart_Factory\\project\\project_CSharp\\EggClassifier\\EggClassifier.csproj",
+        "projectUniqueName": "C:\\Users\\tedya\\source\\repos\\Smart_Factory\\project\\project_Egg_Classification\\demo\\EggClassifier\\EggClassifier.csproj",
         "projectName": "EggClassifier",
-        "projectPath": "C:\\Users\\tedya\\source\\repos\\Smart_Factory\\project\\project_CSharp\\EggClassifier\\EggClassifier.csproj",
+        "projectPath": "C:\\Users\\tedya\\source\\repos\\Smart_Factory\\project\\project_Egg_Classification\\demo\\EggClassifier\\EggClassifier.csproj",
         "packagesPath": "C:\\Users\\tedya\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\tedya\\source\\repos\\Smart_Factory\\project\\project_CSharp\\EggClassifier\\obj\\",
+        "outputPath": "C:\\Users\\tedya\\source\\repos\\Smart_Factory\\project\\project_Egg_Classification\\demo\\EggClassifier\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -53,6 +53,10 @@
             "CommunityToolkit.Mvvm": {
               "target": "Package",
               "version": "[8.2.2, )"
+            },
+            "Microsoft.Extensions.DependencyInjection": {
+              "target": "Package",
+              "version": "[8.0.1, )"
             },
             "Microsoft.ML.OnnxRuntime": {
               "target": "Package",
