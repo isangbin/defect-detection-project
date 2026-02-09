@@ -16,6 +16,7 @@
 | 패키지 | 버전 | 용도 |
 |--------|------|------|
 | CommunityToolkit.Mvvm | 8.2.2 | MVVM 소스 생성기 ([ObservableProperty], [RelayCommand]) |
+| Microsoft.Extensions.DependencyInjection | 8.0.1 | DI 컨테이너 (서비스/ViewModel 자동 주입) |
 | Microsoft.ML.OnnxRuntime | 1.16.3 | ONNX 모델 로드 및 추론 실행 |
 | OpenCvSharp4 | 4.9.0 | OpenCV C# 래퍼 (이미지 처리) |
 | OpenCvSharp4.Extensions | 4.9.0 | Mat ↔ Bitmap 변환 유틸 |
@@ -86,9 +87,13 @@ pip install onnx onnxslim onnxruntime
 파일 구조:
 - 클래스당 하나의 파일 (작은 DTO는 같은 파일 허용)
 - 네임스페이스 = 폴더 구조와 일치
-  - EggClassifier.Models      → Models/ 폴더
-  - EggClassifier.Services    → Services/ 폴더
-  - EggClassifier.ViewModels  → ViewModels/ 폴더
+  - EggClassifier.Core             → Core/ 폴더
+  - EggClassifier.Models           → Models/ 폴더
+  - EggClassifier.Services         → Services/ 폴더
+  - EggClassifier.ViewModels       → ViewModels/ 폴더
+  - EggClassifier.Features.Detection  → Features/Detection/ 폴더
+  - EggClassifier.Features.Login      → Features/Login/ 폴더
+  - EggClassifier.Features.Dashboard  → Features/Dashboard/ 폴더
 ```
 
 ### 2.2 MVVM 패턴 규칙
@@ -98,15 +103,21 @@ View (XAML):
 - UI 레이아웃만 담당
 - 코드비하인드에 로직 작성 금지
 - 모든 데이터는 Binding으로 연결
+- 각 Feature의 View는 UserControl로 작성
 
 ViewModel:
+- Feature ViewModel은 ViewModelBase를 상속
 - [ObservableProperty]로 바인딩 프로퍼티 선언
 - [RelayCommand]로 커맨드 선언
 - View에 직접 접근 금지 (Dispatcher만 예외)
+- 생성자에서 서비스 인터페이스를 주입받음 (DI)
+- OnNavigatedTo(): 페이지 진입 시 이벤트 구독
+- OnNavigatedFrom(): 페이지 이탈 시 리소스 정리
 
 Model/Service:
 - 순수 로직만 담당
 - UI 의존성 없음
+- 인터페이스(I~Service)를 통해 접근
 - IDisposable 구현 필수 (리소스 사용 시)
 ```
 
@@ -127,40 +138,41 @@ Model/Service:
 ### 3.1 전체 아키텍처 다이어그램
 
 ```
-┌─────────────────────────────────────────────────┐
-│                    WPF App                       │
-│                                                  │
-│  ┌──────────────┐    ┌───────────────────────┐  │
-│  │ MainWindow   │    │ MainViewModel         │  │
-│  │ (XAML View)  │◄──►│ (바인딩, 커맨드)       │  │
-│  │              │    │                       │  │
-│  │ - 웹캠 영상   │    │ - Start/Stop 커맨드    │  │
-│  │ - 컨트롤 패널  │    │ - 프레임 처리          │  │
-│  │ - 탐지 결과   │    │ - 결과 업데이트        │  │
-│  └──────────────┘    └───────┬───────────────┘  │
-│                              │                   │
-│                    ┌─────────┼─────────┐        │
-│                    ▼                   ▼        │
-│         ┌──────────────┐   ┌───────────────┐   │
-│         │ WebcamService│   │ YoloDetector  │   │
-│         │              │   │               │   │
-│         │ - 프레임 캡처  │   │ - 전처리       │   │
-│         │ - FPS 계산    │   │ - ONNX 추론    │   │
-│         │ - 이벤트 발생  │   │ - 후처리/NMS   │   │
-│         └──────────────┘   └───────────────┘   │
-│               │                    │            │
-│          VideoCapture        InferenceSession   │
-│          (OpenCvSharp)       (OnnxRuntime)      │
-└─────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                      WPF App (DI Container)              │
+│                                                          │
+│  ┌──────────────┐    ┌────────────────────────────────┐ │
+│  │ MainWindow   │    │ MainViewModel                  │ │
+│  │ (셸)         │◄──►│ (네비게이션 커맨드만)            │ │
+│  │ 사이드바      │    │                                │ │
+│  │ + ContentCtrl│    │ NavigationService               │ │
+│  └──────────────┘    └────────┬───────────────────────┘ │
+│                               │ NavigateTo<T>()          │
+│                    ┌──────────┼──────────────┐          │
+│                    ▼          ▼              ▼          │
+│          ┌──────────┐  ┌──────────┐  ┌──────────────┐  │
+│          │Detection │  │ Login    │  │ Dashboard    │  │
+│          │ViewModel │  │ViewModel │  │ ViewModel    │  │
+│          │ + View   │  │ + View   │  │ + View       │  │
+│          └────┬─────┘  └──────────┘  └──────────────┘  │
+│               │                                         │
+│        ┌──────┼──────┐                                  │
+│        ▼             ▼                                  │
+│  ┌───────────┐  ┌──────────────┐                       │
+│  │IWebcam   │  │IDetector     │                       │
+│  │Service   │  │Service       │                       │
+│  │(웹캠)    │  │(YOLO 추론)   │                       │
+│  └───────────┘  └──────────────┘                       │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ### 3.2 데이터 흐름
 
 ```
 1. WebcamService가 백그라운드 스레드에서 프레임 캡처
-2. FrameCaptured 이벤트로 Mat 프레임을 ViewModel에 전달
-3. ViewModel이 YoloDetector.Detect()를 호출
-4. YoloDetector 내부:
+2. FrameCaptured 이벤트로 Mat 프레임을 DetectionViewModel에 전달
+3. DetectionViewModel이 IDetectorService.Detect()를 호출
+4. DetectorService 내부에서 YoloDetector 사용:
    a. Preprocess: Letterbox 리사이즈 → RGB 변환 → 정규화 → NCHW 텐서
    b. OnnxRuntime으로 추론 실행
    c. Postprocess: 출력 디코딩 → 좌표 복원 → NMS
@@ -173,7 +185,7 @@ Model/Service:
 
 ```
 [UI Thread]
-  └─ MainWindow, MainViewModel (프로퍼티 업데이트, UI 렌더링)
+  └─ MainWindow, DetectionViewModel (프로퍼티 업데이트, UI 렌더링)
 
 [Capture Thread] (Task.Run)
   └─ WebcamService.CaptureLoop()
@@ -261,7 +273,7 @@ python export_onnx.py
 [ ] best.pt → ONNX 변환 완료
 [ ] 클래스 수가 변경되었으면 YoloDetector.cs의 ClassNames 배열 수정
 [ ] 클래스 수가 변경되었으면 ClassColors 배열도 동일하게 수정
-[ ] 클래스 수가 변경되었으면 MainViewModel.cs의 ClassBrushes 배열도 수정
+[ ] 클래스 수가 변경되었으면 Features/Detection/DetectionViewModel.cs의 ClassBrushes 배열도 수정
 [ ] egg_classifier.onnx를 Models/ 폴더에 복사
 [ ] 빌드 후 테스트 이미지로 추론 확인
 ```
@@ -297,6 +309,18 @@ FPS 향상 방법:
 2. BitmapSource.Freeze()로 GC 최적화
 3. ObservableCollection 갱신 최소화
 ```
+
+### 5.3 팀원 충돌 방지 규칙
+
+| 팀원 | 수정 범위 | 비고 |
+|------|-----------|------|
+| A | `Features/Detection/` | 계란 분류 기능 |
+| B | `Features/Login/` | 로그인 기능 |
+| C | `Features/Dashboard/` | 대시보드 기능 |
+| 공통 | `Services/`에 새 파일 추가 | 신규 파일이므로 충돌 없음 |
+| 공통 | `App.xaml.cs`에 DI 등록 1줄 | append-only라 충돌 확률 낮음 |
+
+새 Feature/Service 추가 방법은 [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) 참고
 
 ---
 

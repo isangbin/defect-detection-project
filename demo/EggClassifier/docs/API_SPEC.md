@@ -5,18 +5,27 @@
 1. [EggClassifier.Models.Detection](#1-detection-클래스)
 2. [EggClassifier.Models.YoloDetector](#2-yolodetector-클래스)
 3. [EggClassifier.Services.FrameCapturedEventArgs](#3-framecapturedeventargs-클래스)
-4. [EggClassifier.Services.WebcamService](#4-webcamservice-클래스)
-5. [EggClassifier.ViewModels.ClassCountItem](#5-classcountitem-클래스)
-6. [EggClassifier.ViewModels.DetectionItem](#6-detectionitem-클래스)
-7. [EggClassifier.ViewModels.MainViewModel](#7-mainviewmodel-클래스)
-8. [Python Scripts](#8-python-스크립트)
+4. [EggClassifier.Services.IWebcamService](#4-iwebcamservice-인터페이스)
+5. [EggClassifier.Services.WebcamService](#5-webcamservice-클래스)
+6. [EggClassifier.Services.IDetectorService](#6-idetectorservice-인터페이스)
+7. [EggClassifier.Services.DetectorService](#7-detectorservice-클래스)
+8. [EggClassifier.Core.ViewModelBase](#8-viewmodelbase-클래스)
+9. [EggClassifier.Core.INavigationService](#9-inavigationservice-인터페이스)
+10. [EggClassifier.Core.NavigationService](#10-navigationservice-클래스)
+11. [EggClassifier.Models.ClassCountItem](#11-classcountitem-클래스)
+12. [EggClassifier.Models.DetectionItem](#12-detectionitem-클래스)
+13. [EggClassifier.ViewModels.MainViewModel](#13-mainviewmodel-클래스)
+14. [EggClassifier.Features.Detection.DetectionViewModel](#14-detectionviewmodel-클래스)
+15. [EggClassifier.Features.Login.LoginViewModel](#15-loginviewmodel-클래스)
+16. [EggClassifier.Features.Dashboard.DashboardViewModel](#16-dashboardviewmodel-클래스)
+17. [Python Scripts](#17-python-스크립트)
 
 ---
 
 ## 1. Detection 클래스
 
 **네임스페이스:** `EggClassifier.Models`
-**파일:** `Models/YoloDetector.cs`
+**파일:** `Models/Detection.cs`
 **역할:** 단일 객체 탐지 결과를 담는 데이터 클래스 (DTO)
 
 ### 프로퍼티
@@ -258,11 +267,29 @@ ONNX InferenceSession을 해제합니다.
 
 ---
 
-## 4. WebcamService 클래스
+## 4. IWebcamService 인터페이스
+
+**네임스페이스:** `EggClassifier.Services`
+**파일:** `Services/IWebcamService.cs`
+**역할:** 웹캠 서비스의 인터페이스 정의 (DI 주입용)
+
+### 멤버
+
+| 멤버 | 타입 | 설명 |
+|------|------|------|
+| `FrameCaptured` | `event EventHandler<FrameCapturedEventArgs>?` | 프레임 수신 이벤트 |
+| `ErrorOccurred` | `event EventHandler<string>?` | 에러 발생 이벤트 |
+| `IsRunning` | `bool` | 캡처 실행 중 여부 |
+| `Start()` | `bool` | 캡처 시작 |
+| `Stop()` | `void` | 캡처 중지 |
+
+---
+
+## 5. WebcamService 클래스
 
 **네임스페이스:** `EggClassifier.Services`
 **파일:** `Services/WebcamService.cs`
-**인터페이스:** `IDisposable`
+**인터페이스:** `IWebcamService, IDisposable`
 **역할:** 웹캠에서 프레임을 캡처하여 이벤트로 전달하는 서비스
 
 ### 프로퍼티
@@ -319,10 +346,88 @@ ONNX InferenceSession을 해제합니다.
 
 ---
 
-## 5. ClassCountItem 클래스
+## 6. IDetectorService 인터페이스
 
-**네임스페이스:** `EggClassifier.ViewModels`
-**파일:** `ViewModels/MainViewModel.cs`
+**네임스페이스:** `EggClassifier.Services`
+**파일:** `Services/IDetectorService.cs`
+**역할:** 탐지 서비스 인터페이스 (YoloDetector 래핑, DI 주입용)
+
+### 멤버
+
+| 멤버 | 타입 | 설명 |
+|------|------|------|
+| `IsLoaded` | `bool` | 모델 로드 여부 |
+| `ClassNames` | `string[]` | 클래스 이름 배열 |
+| `LoadModel(string)` | `bool` | ONNX 모델 로드 |
+| `Detect(Mat, float)` | `List<Detection>` | 객체 탐지 수행 |
+| `DrawDetections(Mat, List<Detection>)` | `void` | 바운딩박스 그리기 |
+
+---
+
+## 7. DetectorService 클래스
+
+**네임스페이스:** `EggClassifier.Services`
+**파일:** `Services/DetectorService.cs`
+**인터페이스:** `IDetectorService`
+**역할:** YoloDetector를 래핑하여 인터페이스를 통해 접근 가능하게 함
+
+내부적으로 YoloDetector 인스턴스를 생성하고 모든 호출을 위임합니다.
+
+---
+
+## 8. ViewModelBase 클래스
+
+**네임스페이스:** `EggClassifier.Core`
+**파일:** `Core/ViewModelBase.cs`
+**부모 클래스:** `ObservableObject`
+**역할:** 모든 Feature ViewModel의 부모 클래스
+
+### 가상 메서드
+
+| 메서드 | 호출 시점 | 용도 |
+|--------|-----------|------|
+| `OnNavigatedTo()` | 페이지 진입 시 | 이벤트 구독, 데이터 로드 |
+| `OnNavigatedFrom()` | 페이지 이탈 시 | 이벤트 해제, 리소스 정리 |
+
+---
+
+## 9. INavigationService 인터페이스
+
+**네임스페이스:** `EggClassifier.Core`
+**파일:** `Core/INavigationService.cs`
+**역할:** 페이지 네비게이션 인터페이스
+
+### 멤버
+
+| 멤버 | 타입 | 설명 |
+|------|------|------|
+| `CurrentView` | `ViewModelBase?` | 현재 활성 ViewModel |
+| `NavigateTo<T>()` | `void` | 지정 ViewModel로 네비게이션 |
+
+---
+
+## 10. NavigationService 클래스
+
+**네임스페이스:** `EggClassifier.Core`
+**파일:** `Core/NavigationService.cs`
+**부모 클래스:** `ObservableObject`
+**인터페이스:** `INavigationService`
+
+### 동작 원리
+
+1. `NavigateTo<T>()` 호출 시:
+   - 이전 VM의 `OnNavigatedFrom()` 호출
+   - DI 컨테이너에서 새 VM resolve
+   - 새 VM의 `OnNavigatedTo()` 호출
+   - `CurrentView` 프로퍼티 변경 → PropertyChanged 발생
+   - ContentControl이 DataTemplate에 따라 View 렌더링
+
+---
+
+## 11. ClassCountItem 클래스
+
+**네임스페이스:** `EggClassifier.Models`
+**파일:** `Models/ClassCountItem.cs`
 **부모 클래스:** `ObservableObject`
 **역할:** UI에서 클래스별 탐지 카운트를 표시하기 위한 바인딩용 모델
 
@@ -336,10 +441,10 @@ ONNX InferenceSession을 해제합니다.
 
 ---
 
-## 6. DetectionItem 클래스
+## 12. DetectionItem 클래스
 
-**네임스페이스:** `EggClassifier.ViewModels`
-**파일:** `ViewModels/MainViewModel.cs`
+**네임스페이스:** `EggClassifier.Models`
+**파일:** `Models/DetectionItem.cs`
 **부모 클래스:** `ObservableObject`
 **역할:** 현재 프레임의 개별 탐지 결과를 UI에 표시하기 위한 바인딩용 모델
 
@@ -361,89 +466,116 @@ ONNX InferenceSession을 해제합니다.
 
 ---
 
-## 7. MainViewModel 클래스
+## 13. MainViewModel 클래스
 
 **네임스페이스:** `EggClassifier.ViewModels`
 **파일:** `ViewModels/MainViewModel.cs`
 **부모 클래스:** `ObservableObject`
-**인터페이스:** `IDisposable`
-**역할:** 메인 윈도우의 MVVM ViewModel. UI 상태 관리, 웹캠/추론 조율
+**역할:** 앱 셸의 네비게이션 관리 (사이드바 ↔ ContentControl)
 
-### 바인딩 프로퍼티
+### 생성자
 
-| 프로퍼티 | 타입 | 기본값 | 설명 |
-|----------|------|--------|------|
-| `CurrentFrame` | `BitmapSource?` | `null` | 웹캠 영상 프레임 (Image 컨트롤 바인딩) |
-| `FpsText` | `string` | `"FPS: --"` | FPS 표시 텍스트 |
-| `StatusMessage` | `string` | `"시작 버튼을..."` | 오버레이 안내 메시지 |
-| `OverlayVisibility` | `Visibility` | `Visible` | 안내 오버레이 표시 여부 |
-| `IsModelLoaded` | `bool` | `false` | 모델 로드 성공 여부 |
-| `ModelStatusText` | `string` | `"로딩 중..."` | 모델 상태 텍스트 ("로드됨", "로드 실패", "모델 없음") |
-| `ModelStatusColor` | `SolidColorBrush` | 노랑 | 모델 상태 배지 색상 |
-| `ModelPath` | `string` | `""` | 로드된 모델 파일 경로 |
-| `CanStart` | `bool` | `false` | 시작 버튼 활성화 여부 |
-| `CanStop` | `bool` | `false` | 중지 버튼 활성화 여부 |
-| `ConfidenceThreshold` | `float` | `0.5` | 신뢰도 필터 임계값 (슬라이더 바인딩) |
-| `TotalDetections` | `int` | `0` | 현재 프레임 총 탐지 수 |
-| `NoDetectionVisibility` | `Visibility` | `Visible` | "탐지된 객체 없음" 텍스트 표시 여부 |
+| 매개변수 | 타입 | 설명 |
+|----------|------|------|
+| `navigationService` | `INavigationService` | DI에서 주입됨 |
 
-### 컬렉션
+### 프로퍼티
 
 | 프로퍼티 | 타입 | 설명 |
 |----------|------|------|
-| `ClassCounts` | `ObservableCollection<ClassCountItem>` | 5개 클래스별 탐지 카운트 |
-| `CurrentDetections` | `ObservableCollection<DetectionItem>` | 현재 프레임 탐지 목록 (신뢰도 내림차순) |
+| `Navigation` | `INavigationService` | 네비게이션 서비스 (ContentControl 바인딩) |
+| `IsDetectionSelected` | `bool` | 계란 분류 탭 선택 상태 |
+| `IsLoginSelected` | `bool` | 로그인 탭 선택 상태 |
+| `IsDashboardSelected` | `bool` | 대시보드 탭 선택 상태 |
 
 ### 커맨드
 
-#### `StartCommand` → `Start()`
-
-| 항목 | 내용 |
-|------|------|
-| **바인딩** | 시작 버튼의 `Command` |
-| **동작** | 1) WebcamService.Start() 호출<br>2) 성공 시: CanStart=false, CanStop=true, 오버레이 숨김, 카운트 초기화<br>3) 실패 시: 상태 메시지 업데이트 |
-
-#### `StopCommand` → `Stop()`
-
-| 항목 | 내용 |
-|------|------|
-| **바인딩** | 중지 버튼의 `Command` |
-| **동작** | 1) WebcamService.Stop() 호출<br>2) CanStart=true, CanStop=false<br>3) 오버레이 표시, FPS 초기화 |
-
-### 내부 메서드
-
-#### `private void LoadModel()`
-
-앱 시작 시 ONNX 모델을 탐색하고 로드합니다.
-
-| 항목 | 내용 |
-|------|------|
-| **탐색 순서** | 1) `bin/Models/egg_classifier.onnx`<br>2) `bin/egg_classifier.onnx`<br>3) 프로젝트 소스 `Models/`<br>4) 상위 `models/` |
-| **모델 없을 때** | StatusText="모델 없음", 빨간 배지, 웹캠만 사용 가능 |
-
-#### `private void OnFrameCaptured(object?, FrameCapturedEventArgs)`
-
-웹캠 프레임 수신 시 호출되는 이벤트 핸들러입니다.
-
-| 항목 | 내용 |
-|------|------|
-| **실행 스레드** | 캡처 스레드 (ThreadPool) |
-| **동작** | 1) YoloDetector.Detect() 호출<br>2) DrawDetections()로 바운딩박스 렌더링<br>3) Mat → BitmapSource 변환 + Freeze<br>4) **BeginInvoke**로 UI 스레드에 비동기 업데이트<br>5) Mat Dispose |
-
-#### `private void UpdateDetectionResults(List<Detection>)`
-
-탐지 결과를 UI 컬렉션에 반영합니다.
-
-| 항목 | 내용 |
-|------|------|
-| **실행 스레드** | UI 스레드 (Dispatcher 경유) |
-| **동작** | 1) CurrentDetections 갱신 (신뢰도 내림차순)<br>2) NoDetectionVisibility 토글<br>3) ClassCounts 클래스별 카운트 업데이트<br>4) TotalDetections 합산 |
+| 커맨드 | 동작 |
+|--------|------|
+| `NavigateToDetectionCommand` | DetectionViewModel로 이동 |
+| `NavigateToLoginCommand` | LoginViewModel로 이동 |
+| `NavigateToDashboardCommand` | DashboardViewModel로 이동 |
 
 ---
 
-## 8. Python 스크립트
+## 14. DetectionViewModel 클래스
 
-### 8.1 run_train.py — 모델 학습
+**네임스페이스:** `EggClassifier.Features.Detection`
+**파일:** `Features/Detection/DetectionViewModel.cs`
+**부모 클래스:** `ViewModelBase`
+**인터페이스:** `IDisposable`
+**역할:** 계란 분류 페이지의 ViewModel. 웹캠/추론 조율 (기존 MainViewModel 로직 이동)
+
+### 생성자
+
+| 매개변수 | 타입 | 설명 |
+|----------|------|------|
+| `webcamService` | `IWebcamService` | DI에서 주입 |
+| `detector` | `IDetectorService` | DI에서 주입 |
+
+### 바인딩 프로퍼티
+
+(기존 MainViewModel과 동일 - CurrentFrame, FpsText, StatusMessage, OverlayVisibility, IsModelLoaded, ModelStatusText, ModelStatusColor, ModelPath, CanStart, CanStop, ConfidenceThreshold, TotalDetections, NoDetectionVisibility, ClassCounts, CurrentDetections)
+
+### 커맨드
+
+| 커맨드 | 동작 |
+|--------|------|
+| `StartCommand` | 웹캠 시작, 카운트 초기화 |
+| `StopCommand` | 웹캠 중지 |
+
+### 생명주기
+
+| 메서드 | 동작 |
+|--------|------|
+| `OnNavigatedTo()` | FrameCaptured/ErrorOccurred 이벤트 구독 |
+| `OnNavigatedFrom()` | 웹캠 정지 + 이벤트 구독 해제 |
+
+---
+
+## 15. LoginViewModel 클래스 (스텁)
+
+**네임스페이스:** `EggClassifier.Features.Login`
+**파일:** `Features/Login/LoginViewModel.cs`
+**부모 클래스:** `ViewModelBase`
+**역할:** 로그인 페이지 (미구현 스텁)
+
+### 프로퍼티
+
+| 프로퍼티 | 타입 | 설명 |
+|----------|------|------|
+| `Username` | `string` | 사용자명 입력 |
+| `StatusMessage` | `string` | 상태 메시지 |
+
+### 커맨드
+
+| 커맨드 | 동작 |
+|--------|------|
+| `LoginCommand` | 스텁: "로그인 기능은 아직 구현되지 않았습니다." 표시 |
+
+---
+
+## 16. DashboardViewModel 클래스 (스텁)
+
+**네임스페이스:** `EggClassifier.Features.Dashboard`
+**파일:** `Features/Dashboard/DashboardViewModel.cs`
+**부모 클래스:** `ViewModelBase`
+**역할:** 대시보드 페이지 (미구현 스텁)
+
+### 프로퍼티
+
+| 프로퍼티 | 타입 | 설명 |
+|----------|------|------|
+| `TotalInspections` | `int` | 총 검사 수 (기본 0) |
+| `NormalCount` | `int` | 정상 카운트 (기본 0) |
+| `DefectCount` | `int` | 불량 카운트 (기본 0) |
+| `LogMessage` | `string` | 로그 메시지 |
+
+---
+
+## 17. Python 스크립트
+
+### 17.1 run_train.py — 모델 학습
 
 | 항목 | 내용 |
 |------|------|
@@ -464,7 +596,7 @@ ONNX InferenceSession을 해제합니다.
 | `workers` | `4` | 데이터 로딩 병렬 워커 수 |
 | `optimizer` | `'SGD'` | 옵티마이저 (Muon → SGD 변경, CUDA BF16 호환성) |
 
-### 8.2 export_onnx.py — ONNX 내보내기
+### 17.2 export_onnx.py — ONNX 내보내기
 
 | 항목 | 내용 |
 |------|------|
@@ -481,7 +613,7 @@ ONNX InferenceSession을 해제합니다.
 | `simplify` | `True` | ONNX 그래프 단순화 (불필요한 노드 제거) |
 | `opset` | `12` | ONNX 연산자 세트 버전 |
 
-### 8.3 test_inference.py — 추론 테스트
+### 17.3 test_inference.py — 추론 테스트
 
 | 항목 | 내용 |
 |------|------|
@@ -491,7 +623,7 @@ ONNX InferenceSession을 해제합니다.
 
 ---
 
-## 9. XAML 리소스 (App.xaml)
+## 18. XAML 리소스 (App.xaml)
 
 ### 색상 리소스
 
@@ -514,3 +646,12 @@ ONNX InferenceSession을 해제합니다.
 | `PrimaryButtonStyle` | `Button` | 파란색 배경, 둥근 모서리, hover 시 어두워짐, disabled 시 회색 |
 | `DangerButtonStyle` | `Button` | 빨간색 배경 (PrimaryButtonStyle 상속) |
 | `CardStyle` | `Border` | 카드 컨테이너 (둥근 모서리, SurfaceColor 배경, 15px 패딩) |
+| `NavButtonStyle` | `RadioButton` | 사이드바 네비게이션 버튼 (좌측 파란 보더, hover/checked 배경 변경) |
+
+### DataTemplate (ViewModel → View 매핑)
+
+| ViewModel | View | 설명 |
+|-----------|------|------|
+| `DetectionViewModel` | `DetectionView` | 계란 분류 페이지 |
+| `LoginViewModel` | `LoginView` | 로그인 페이지 |
+| `DashboardViewModel` | `DashboardView` | 대시보드 페이지 |

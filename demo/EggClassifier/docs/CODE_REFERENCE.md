@@ -9,15 +9,19 @@
 
 1. [YoloDetector.cs — ONNX 추론 엔진](#1-yolodetectorcs)
 2. [WebcamService.cs — 웹캠 캡처 서비스](#2-webcamservicecs)
-3. [MainViewModel.cs — MVVM ViewModel](#3-mainviewmodelcs)
-4. [MainWindow.xaml — 메인 UI](#4-mainwindowxaml)
-5. [MainWindow.xaml.cs — 코드비하인드](#5-mainwindowxamlcs)
-6. [App.xaml — 전역 리소스](#6-appxaml)
-7. [App.xaml.cs — 앱 시작점](#7-appxamlcs)
-8. [EggClassifier.csproj — 프로젝트 설정](#8-eggclassifiercsproj)
-9. [run_train.py — 모델 학습](#9-run_trainpy)
-10. [export_onnx.py — ONNX 내보내기](#10-export_onnxpy)
-11. [test_inference.py — 추론 테스트](#11-test_inferencepy)
+3. [Core/ — 네비게이션 인프라](#3-core--네비게이션-인프라)
+4. [Models/ — DTO 클래스](#4-models--dto-클래스)
+5. [Services/ — 인터페이스 + 래퍼](#5-services--인터페이스--래퍼)
+6. [DetectionViewModel.cs — 계란 분류 ViewModel](#6-detectionviewmodelcs)
+7. [MainViewModel.cs — 네비게이션 ViewModel](#7-mainviewmodelcs)
+8. [MainWindow.xaml — 셸 UI](#8-mainwindowxaml)
+9. [MainWindow.xaml.cs — 코드비하인드](#9-mainwindowxamlcs)
+10. [App.xaml — 전역 리소스 + DataTemplate](#10-appxaml)
+11. [App.xaml.cs — DI 컨테이너 + 앱 시작](#11-appxamlcs)
+12. [EggClassifier.csproj — 프로젝트 설정](#12-eggclassifiercsproj)
+13. [run_train.py — 모델 학습](#13-run_trainpy)
+14. [export_onnx.py — ONNX 내보내기](#14-export_onnxpy)
+15. [test_inference.py — 추론 테스트](#15-test_inferencepy)
 
 ---
 
@@ -26,6 +30,9 @@
 이 파일은 프로젝트의 **핵심 AI 엔진**입니다.
 ONNX 모델을 로드하고, 이미지를 전처리하고, 추론을 실행하고, 결과를 후처리합니다.
 
+> **참고:** 이전 버전에서는 이 파일 안에 `Detection` 클래스가 함께 정의되어 있었지만,
+> 모듈화 리팩토링 이후 Detection 클래스는 `Models/Detection.cs`로 분리되었습니다.
+
 ```csharp
 using Microsoft.ML.OnnxRuntime;           // ONNX 모델 로드/추론 라이브러리
 using Microsoft.ML.OnnxRuntime.Tensors;   // 텐서(다차원 배열) 자료구조
@@ -33,25 +40,6 @@ using OpenCvSharp;                        // OpenCV C# 래퍼 (이미지 처리)
 using System;                             // 기본 시스템 타입 (Math, Exception 등)
 using System.Collections.Generic;         // List<T>, Dictionary 등 컬렉션
 using System.Linq;                        // LINQ 쿼리 (.First(), .Select() 등)
-```
-
-### Detection 클래스 (탐지 결과 데이터)
-
-```csharp
-namespace EggClassifier.Models            // 네임스페이스: Models 폴더에 속함
-{
-    public class Detection                // 하나의 탐지 결과를 담는 데이터 클래스
-    {
-        public int ClassId { get; set; }              // 클래스 번호 (0=정상, 1=크랙, ...)
-        public string ClassName { get; set; } = "";   // 클래스 한글 이름
-        public float Confidence { get; set; }         // 신뢰도 (0.0 ~ 1.0, 높을수록 확실)
-        public Rect BoundingBox { get; set; }         // 바운딩박스 (X, Y, Width, Height)
-    }
-    //
-    // 사용 예시:
-    //   var det = new Detection { ClassId = 1, ClassName = "크랙", Confidence = 0.92f,
-    //                             BoundingBox = new Rect(100, 50, 200, 180) };
-    //   → "좌표 (100,50)에서 시작하는 200x180 영역에 크랙이 92% 확률로 있음"
 ```
 
 ### YoloDetector 클래스 (추론 엔진 본체)
@@ -743,7 +731,7 @@ namespace EggClassifier.Services
                     // 원본 frame은 다음 Read()에서 덮어쓰이므로 복사 필수
 
                     FrameCaptured?.Invoke(this, new FrameCapturedEventArgs(frameCopy, fps));
-                    // 구독자(MainViewModel)에게 프레임 전달
+                    // 구독자(DetectionViewModel)에게 프레임 전달
                     // 주의: 구독자가 frameCopy.Dispose()를 호출해야 메모리 누수 방지
 
                     // ── 프레임레이트 조절 ──
@@ -785,34 +773,153 @@ namespace EggClassifier.Services
 
 ---
 
-## 3. MainViewModel.cs
+## 3. Core/ — 네비게이션 인프라
 
-MVVM 패턴의 ViewModel. UI 상태를 관리하고 WebcamService와 YoloDetector를 조율합니다.
+`Core/` 폴더에는 페이지 네비게이션을 위한 기반 클래스와 서비스가 정의되어 있습니다.
+모든 Feature ViewModel은 `ViewModelBase`를 상속하고, `NavigationService`를 통해 전환됩니다.
+
+### Core/ViewModelBase.cs — ViewModel 부모 클래스
 
 ```csharp
-using CommunityToolkit.Mvvm.ComponentModel;  // ObservableObject, [ObservableProperty]
-using CommunityToolkit.Mvvm.Input;           // [RelayCommand]
-using EggClassifier.Models;                  // Detection, YoloDetector
-using EggClassifier.Services;                // WebcamService
-using OpenCvSharp;                           // Mat
-using OpenCvSharp.WpfExtensions;             // Mat.ToBitmapSource() 확장 메서드
-using System;
-using System.Collections.ObjectModel;        // ObservableCollection (UI 바인딩용 컬렉션)
-using System.IO;                             // File.Exists, Path.Combine
-using System.Linq;
-using System.Windows;                        // Application.Current, Visibility
-using System.Windows.Media;                  // SolidColorBrush, Color
-using System.Windows.Media.Imaging;          // BitmapSource
+using CommunityToolkit.Mvvm.ComponentModel;
+
+namespace EggClassifier.Core
+{
+    public class ViewModelBase : ObservableObject
+    // 모든 Feature ViewModel의 부모 클래스
+    // ObservableObject를 상속하여 PropertyChanged 자동 지원
+    {
+        public virtual void OnNavigatedTo() { }
+        // 페이지 진입 시 호출 — override하여 이벤트 구독, 데이터 로드 등 수행
+        // 예: DetectionViewModel에서 웹캠 이벤트 구독
+
+        public virtual void OnNavigatedFrom() { }
+        // 페이지 이탈 시 호출 — override하여 웹캠 정지, 이벤트 해제 등 수행
+        // 예: DetectionViewModel에서 웹캠 Stop + 이벤트 해제
+    }
+}
 ```
 
-### ClassCountItem — 클래스별 카운트 표시용
+> **핵심 포인트:**
+> - `OnNavigatedTo` / `OnNavigatedFrom`은 생성자/Dispose 대신 사용됨
+> - NavigationService가 페이지 전환 시 자동으로 호출해줌
+> - Feature ViewModel은 이 두 메서드를 override하여 라이프사이클을 관리
+
+### Core/INavigationService.cs — 네비게이션 인터페이스
 
 ```csharp
-    public class ClassCountItem : ObservableObject   // ObservableObject: 프로퍼티 변경 알림 지원
+using System.ComponentModel;
+
+namespace EggClassifier.Core
+{
+    public interface INavigationService : INotifyPropertyChanged
+    // INotifyPropertyChanged: CurrentView 변경 시 UI에 알림 가능
+    {
+        ViewModelBase? CurrentView { get; }
+        // 현재 활성화된 ViewModel — ContentControl에 바인딩됨
+        // null이면 아무 페이지도 표시되지 않음
+
+        void NavigateTo<T>() where T : ViewModelBase;
+        // 제네릭으로 대상 ViewModel 타입 지정 → DI에서 resolve하여 전환
+        // 예: NavigateTo<DetectionViewModel>()
+    }
+}
+```
+
+### Core/NavigationService.cs — 네비게이션 구현체
+
+```csharp
+using CommunityToolkit.Mvvm.ComponentModel;
+using System;
+
+namespace EggClassifier.Core
+{
+    public class NavigationService : ObservableObject, INavigationService
+    // ObservableObject: PropertyChanged 자동 지원
+    // INavigationService: 인터페이스 구현
+    {
+        private readonly IServiceProvider _serviceProvider;
+        // DI 컨테이너 참조 — ViewModel resolve에 사용
+
+        private ViewModelBase? _currentView;
+        public ViewModelBase? CurrentView
+        {
+            get => _currentView;
+            set => SetProperty(ref _currentView, value);
+            // SetProperty: 값 변경 시 PropertyChanged 발생
+            // → ContentControl이 새 ViewModel을 감지하고 DataTemplate으로 View 렌더링
+        }
+
+        public NavigationService(IServiceProvider serviceProvider)
+        {
+            _serviceProvider = serviceProvider;
+            // App.xaml.cs에서 DI 등록 시 IServiceProvider가 자동 주입됨
+        }
+
+        public void NavigateTo<T>() where T : ViewModelBase
+        {
+            var oldView = CurrentView;
+            oldView?.OnNavigatedFrom();
+            // 이전 페이지의 정리 작업 (예: 웹캠 정지)
+            // null이면 아무것도 안 함 (앱 최초 시작 시)
+
+            var newView = (T)_serviceProvider.GetService(typeof(T))!;
+            // DI 컨테이너에서 새 ViewModel 인스턴스를 가져옴
+            // Transient 등록이면 매번 새 인스턴스 생성
+            // '!' = null이 아님을 단언 (DI에 등록되어 있으므로)
+
+            newView.OnNavigatedTo();
+            // 새 페이지의 초기화 작업 (예: 이벤트 구독)
+
+            CurrentView = newView;
+            // PropertyChanged 발생 → ContentControl이 DataTemplate에 따라 View 렌더링
+        }
+    }
+}
+```
+
+> **네비게이션 흐름 요약:**
+> 1. 사용자가 사이드바 버튼 클릭
+> 2. MainViewModel의 NavigateToXxx() 호출
+> 3. NavigationService.NavigateTo\<T\>() 실행
+> 4. 이전 VM의 OnNavigatedFrom() → 새 VM의 OnNavigatedTo()
+> 5. CurrentView 변경 → PropertyChanged → ContentControl이 DataTemplate으로 View 표시
+
+---
+
+## 4. Models/ — DTO 클래스
+
+`Models/` 폴더에는 데이터 전송 객체(DTO)가 모여 있습니다.
+이전에는 다른 파일 안에 중첩되어 있던 클래스들을 별도 파일로 분리했습니다.
+
+### Models/Detection.cs — 탐지 결과 DTO
+
+```csharp
+namespace EggClassifier.Models
+{
+    public class Detection
+    // 하나의 탐지 결과를 담는 데이터 클래스
+    // 이전에는 YoloDetector.cs 안에 정의되어 있었음 → 별도 파일로 분리
+    {
+        public int ClassId { get; set; }              // 클래스 번호 (0=정상, 1=크랙, ...)
+        public string ClassName { get; set; } = "";   // 클래스 한글 이름
+        public float Confidence { get; set; }         // 신뢰도 (0.0 ~ 1.0, 높을수록 확실)
+        public Rect BoundingBox { get; set; }         // 바운딩박스 (X, Y, Width, Height)
+    }
+}
+```
+
+### Models/ClassCountItem.cs — 클래스별 카운트 표시용
+
+```csharp
+namespace EggClassifier.Models
+{
+    public class ClassCountItem : ObservableObject
+    // 이전에는 ViewModels/MainViewModel.cs 안에 정의되어 있었음 → 별도 파일로 분리
     {
         private int _count;
 
-        public string ClassName { get; set; } = string.Empty;  // "정상", "크랙" 등
+        public string ClassName { get; set; } = string.Empty;    // "정상", "크랙" 등
         public SolidColorBrush Color { get; set; } = Brushes.Gray;  // 색상 아이콘
 
         public int Count
@@ -823,12 +930,16 @@ using System.Windows.Media.Imaging;          // BitmapSource
             // → UI에서 자동으로 새 값을 반영
         }
     }
+}
 ```
 
-### DetectionItem — 현재 탐지 표시용
+### Models/DetectionItem.cs — 현재 탐지 표시용
 
 ```csharp
+namespace EggClassifier.Models
+{
     public class DetectionItem : ObservableObject
+    // 이전에는 ViewModels/MainViewModel.cs 안에 정의되어 있었음 → 별도 파일로 분리
     {
         public string Label { get; set; } = string.Empty;   // 클래스 한글 이름
         public float Confidence { get; set; }                // 신뢰도 (0~1)
@@ -841,17 +952,151 @@ using System.Windows.Media.Imaging;          // BitmapSource
                 ? new SolidColorBrush(Color.FromRgb(255, 193, 7))    // 50~79%: 노랑
                 : new SolidColorBrush(Color.FromRgb(244, 67, 54));   // 50%↓: 빨강
     }
+}
 ```
 
-### MainViewModel 본체
+> **분리 이유:**
+> - 한 파일에 여러 클래스가 있으면 파일이 비대해지고 찾기 어려움
+> - DTO는 독립적이므로 별도 파일로 분리하면 재사용성과 가독성 향상
+> - 클래스 내용 자체는 이전과 동일 — 위치만 변경됨
+
+---
+
+## 5. Services/ — 인터페이스 + 래퍼
+
+`Services/` 폴더에는 DI(Dependency Injection)를 위한 인터페이스와 래퍼 서비스가 정의되어 있습니다.
+**핵심 원칙:** DI를 통해 인터페이스로 접근 → 테스트/교체 용이
+
+### Services/IWebcamService.cs — 웹캠 서비스 인터페이스
 
 ```csharp
-    public partial class MainViewModel : ObservableObject, IDisposable
+namespace EggClassifier.Services
+{
+    public interface IWebcamService
+    // WebcamService의 공개 API를 인터페이스로 정의
+    // → DetectionViewModel은 IWebcamService에만 의존 (구체 클래스에 의존하지 않음)
+    {
+        bool IsRunning { get; }
+        // 캡처 중인지 여부
+
+        event EventHandler<FrameCapturedEventArgs>? FrameCaptured;
+        // 프레임 캡처 이벤트
+
+        event EventHandler<string>? ErrorOccurred;
+        // 에러 이벤트
+
+        bool Start();
+        // 캡처 시작
+
+        void Stop();
+        // 캡처 중지
+    }
+}
+```
+
+> **인터페이스 분리 효과:**
+> - 유닛 테스트 시 Mock 웹캠 서비스로 교체 가능
+> - 나중에 IP 카메라 등 다른 구현으로 교체 시 인터페이스만 구현하면 됨
+
+### Services/IDetectorService.cs — 탐지 서비스 인터페이스
+
+```csharp
+namespace EggClassifier.Services
+{
+    public interface IDetectorService
+    // YoloDetector를 감싸는 인터페이스
+    // → DetectionViewModel은 IDetectorService에만 의존
+    {
+        bool IsLoaded { get; }
+        // 모델 로드 여부
+
+        bool LoadModel(string modelPath);
+        // 모델 로드
+
+        List<Detection> Detect(Mat image, float confidenceThreshold = 0.5f);
+        // 추론 실행
+    }
+}
+```
+
+### Services/DetectorService.cs — IDetectorService 구현
+
+```csharp
+namespace EggClassifier.Services
+{
+    public class DetectorService : IDetectorService
+    // YoloDetector에 작업을 위임하는 래퍼(Wrapper) 클래스
+    {
+        private readonly YoloDetector _detector = new();
+        // 내부적으로 YoloDetector 인스턴스를 생성하여 사용
+
+        public bool IsLoaded => _detector.IsLoaded;
+        // YoloDetector의 IsLoaded를 그대로 전달
+
+        public bool LoadModel(string modelPath)
+            => _detector.LoadModel(modelPath);
+        // YoloDetector의 LoadModel을 그대로 위임
+
+        public List<Detection> Detect(Mat image, float confidenceThreshold = 0.5f)
+            => _detector.Detect(image, confidenceThreshold);
+        // YoloDetector의 Detect를 그대로 위임
+    }
+}
+```
+
+> **래퍼 패턴의 의미:**
+> - YoloDetector 자체를 수정하지 않고 DI 시스템에 편입
+> - 나중에 TensorRT, OpenVINO 등 다른 추론 엔진으로 교체 시
+>   IDetectorService를 구현하는 새 클래스만 만들면 됨
+
+---
+
+## 6. DetectionViewModel.cs
+
+기존 `MainViewModel`의 **웹캠/추론 로직이 이 파일로 이동**되었습니다.
+MVVM 패턴의 ViewModel로서, UI 상태를 관리하고 WebcamService와 DetectorService를 조율합니다.
+
+### 기존 MainViewModel과의 주요 차이점
+
+| 항목 | 이전 (MainViewModel) | 현재 (DetectionViewModel) |
+|------|---------------------|--------------------------|
+| 상속 | `ObservableObject` | `ViewModelBase` (Core/) |
+| 생성자 | `new WebcamService()`, `new YoloDetector()` | `IWebcamService`, `IDetectorService` DI 주입 |
+| 초기화 | 생성자에서 이벤트 구독 | `OnNavigatedTo()`에서 이벤트 구독 |
+| 정리 | `Dispose()` | `OnNavigatedFrom()`에서 웹캠 정지 + 이벤트 해제 |
+| Detection 타입 | 직접 참조 | `using DetectionResult = EggClassifier.Models.Detection;` alias 사용 |
+
+```csharp
+using CommunityToolkit.Mvvm.ComponentModel;  // [ObservableProperty]
+using CommunityToolkit.Mvvm.Input;           // [RelayCommand]
+using EggClassifier.Core;                    // ViewModelBase
+using EggClassifier.Models;                  // ClassCountItem, DetectionItem
+using EggClassifier.Services;                // IWebcamService, IDetectorService
+using OpenCvSharp;                           // Mat
+using OpenCvSharp.WpfExtensions;             // Mat.ToBitmapSource() 확장 메서드
+using System;
+using System.Collections.ObjectModel;        // ObservableCollection (UI 바인딩용 컬렉션)
+using System.IO;                             // File.Exists, Path.Combine
+using System.Linq;
+using System.Windows;                        // Application.Current, Visibility
+using System.Windows.Media;                  // SolidColorBrush, Color
+using System.Windows.Media.Imaging;          // BitmapSource
+
+using DetectionResult = EggClassifier.Models.Detection;
+// namespace 충돌 회피를 위한 alias
+// "Detection"이라는 이름이 여러 네임스페이스에서 사용될 수 있으므로
+// 명시적으로 Models.Detection을 DetectionResult로 참조
+```
+
+### DetectionViewModel 본체
+
+```csharp
+    public partial class DetectionViewModel : ViewModelBase
+    // ViewModelBase 상속: OnNavigatedTo/OnNavigatedFrom 라이프사이클 지원
     // partial: CommunityToolkit 소스 생성기가 나머지 코드를 자동 생성
     {
-        private readonly WebcamService _webcamService;  // 웹캠 서비스 인스턴스
-        private readonly YoloDetector _detector;         // AI 추론 엔진 인스턴스
-        private bool _disposed;
+        private readonly IWebcamService _webcamService;    // DI로 주입받은 웹캠 서비스
+        private readonly IDetectorService _detector;        // DI로 주입받은 탐지 서비스
 
         // ── WPF용 클래스별 색상 브러시 ──
         // OpenCV의 BGR Scalar과 별개로, WPF UI에서 사용할 RGB 브러시
@@ -923,16 +1168,19 @@ using System.Windows.Media.Imaging;          // BitmapSource
         // 현재 프레임의 개별 탐지 목록
 ```
 
-### 생성자 — 초기화
+### 생성자 — DI 주입
 
 ```csharp
-        public MainViewModel()
+        public DetectionViewModel(IWebcamService webcamService, IDetectorService detector)
+        // ★ 이전과 달리 인터페이스를 DI로 주입받음
+        // → new WebcamService(), new YoloDetector() 대신
+        //   DI 컨테이너가 등록된 구현체를 자동으로 전달
         {
-            _webcamService = new WebcamService();   // 웹캠 서비스 생성
-            _detector = new YoloDetector();          // AI 추론 엔진 생성
+            _webcamService = webcamService;
+            _detector = detector;
 
             // ── 클래스 카운트 UI 항목 초기화 ──
-            for (int i = 0; i < YoloDetector.ClassNames.Length; i++)  // 0~4 (5개 클래스)
+            for (int i = 0; i < YoloDetector.ClassNames.Length; i++)
             {
                 ClassCounts.Add(new ClassCountItem
                 {
@@ -942,15 +1190,36 @@ using System.Windows.Media.Imaging;          // BitmapSource
                 });
             }
 
-            // ── 이벤트 구독 ──
+            // ── ONNX 모델 로드 ──
+            LoadModel();
+
+            // 참고: 이벤트 구독은 생성자가 아닌 OnNavigatedTo()에서 수행
+        }
+```
+
+### OnNavigatedTo / OnNavigatedFrom — 라이프사이클
+
+```csharp
+        public override void OnNavigatedTo()
+        // ★ 페이지 진입 시 호출 (이전에는 생성자에서 처리하던 내용)
+        {
             _webcamService.FrameCaptured += OnFrameCaptured;
             // 웹캠에서 새 프레임이 캡처되면 OnFrameCaptured 메서드가 호출됨
 
             _webcamService.ErrorOccurred += OnWebcamError;
             // 웹캠 에러 발생 시 OnWebcamError 메서드가 호출됨
+        }
 
-            // ── ONNX 모델 로드 ──
-            LoadModel();
+        public override void OnNavigatedFrom()
+        // ★ 페이지 이탈 시 호출 (이전에는 Dispose()에서 처리하던 내용)
+        {
+            _webcamService.Stop();
+            // 다른 페이지로 이동하면 웹캠 자동 정지
+
+            _webcamService.FrameCaptured -= OnFrameCaptured;
+            _webcamService.ErrorOccurred -= OnWebcamError;
+            // 이벤트 해제 → 메모리 누수 방지
+            // 이 페이지로 돌아오면 OnNavigatedTo()에서 다시 구독됨
         }
 ```
 
@@ -1060,7 +1329,7 @@ using System.Windows.Media.Imaging;          // BitmapSource
                 var detections = _detector.IsLoaded
                     ? _detector.Detect(frame, ConfidenceThreshold)
                     // 모델이 로드되었으면 추론 실행
-                    : new System.Collections.Generic.List<Detection>();
+                    : new System.Collections.Generic.List<DetectionResult>();
                     // 모델이 없으면 빈 리스트 (웹캠 영상만 표시)
 
                 // ── 바운딩박스 그리기 ──
@@ -1103,7 +1372,7 @@ using System.Windows.Media.Imaging;          // BitmapSource
 ### UpdateDetectionResults — 탐지 결과를 UI에 반영
 
 ```csharp
-        private void UpdateDetectionResults(System.Collections.Generic.List<Detection> detections)
+        private void UpdateDetectionResults(System.Collections.Generic.List<DetectionResult> detections)
         {
             // ── 현재 프레임의 탐지 목록 갱신 ──
             CurrentDetections.Clear();   // 이전 프레임 결과 제거
@@ -1140,7 +1409,7 @@ using System.Windows.Media.Imaging;          // BitmapSource
         }
 ```
 
-### OnWebcamError / Dispose
+### OnWebcamError
 
 ```csharp
         private void OnWebcamError(object? sender, string message)
@@ -1152,125 +1421,201 @@ using System.Windows.Media.Imaging;          // BitmapSource
                 Stop();   // 자동으로 캡처 중지
             });
         }
-
-        public void Dispose()
-        {
-            if (!_disposed)
-            {
-                // 이벤트 구독 해제 (메모리 누수 방지)
-                _webcamService.FrameCaptured -= OnFrameCaptured;
-                _webcamService.ErrorOccurred -= OnWebcamError;
-
-                _webcamService.Dispose();   // 웹캠 서비스 해제
-                _detector.Dispose();        // AI 추론 엔진 해제
-                _disposed = true;
-            }
-        }
     }
 }
 ```
 
 ---
 
-## 4. MainWindow.xaml
+## 7. MainViewModel.cs
 
-WPF XAML로 작성된 메인 UI 레이아웃입니다.
+**새로운 MainViewModel**은 네비게이션 전용입니다. (~57줄)
+기존의 웹캠/추론 로직은 모두 `DetectionViewModel`로 이동했습니다.
+이 ViewModel은 사이드바 상태 관리와 페이지 전환만 담당합니다.
 
-```xml
-<!-- Window 선언: 이 파일이 EggClassifier.MainWindow 클래스의 XAML임을 지정 -->
-<Window x:Class="EggClassifier.MainWindow"
-        xmlns="..."   <!-- WPF 기본 네임스페이스 -->
-        xmlns:x="..." <!-- XAML 확장 네임스페이스 -->
-        Title="계란 품질 분류 시스템"          <!-- 윈도우 제목 표시줄 -->
-        Height="720" Width="1280"             <!-- 초기 창 크기 -->
-        Background="{StaticResource BackgroundBrush}"  <!-- 배경색: #1E1E1E (다크) -->
-        WindowStartupLocation="CenterScreen">  <!-- 화면 중앙에 표시 -->
+```csharp
+using CommunityToolkit.Mvvm.ComponentModel;  // ObservableObject, [ObservableProperty]
+using CommunityToolkit.Mvvm.Input;           // [RelayCommand]
+using EggClassifier.Core;                    // INavigationService, ViewModelBase
+
+namespace EggClassifier.ViewModels
+{
+    public partial class MainViewModel : ObservableObject
+    // ObservableObject: PropertyChanged 자동 지원
+    // partial: 소스 생성기용
+    {
+        private readonly INavigationService _navigation;
+        // DI로 주입받은 네비게이션 서비스
+
+        public INavigationService Navigation => _navigation;
+        // ContentControl의 Content가 이 프로퍼티의 CurrentView에 바인딩
+        // XAML: Content="{Binding Navigation.CurrentView}"
+
+        // ── 사이드바 RadioButton 선택 상태 ──
+        [ObservableProperty]
+        private bool _isDetectionSelected = true;
+        // 앱 시작 시 "계란 분류"가 기본 선택됨
+
+        [ObservableProperty]
+        private bool _isLoginSelected = false;
+
+        [ObservableProperty]
+        private bool _isDashboardSelected = false;
+
+        public MainViewModel(INavigationService navigation)
+        // DI에서 INavigationService(= NavigationService) 주입
+        {
+            _navigation = navigation;
+        }
+
+        [RelayCommand]
+        private void NavigateToDetection()
+        // 사이드바 "계란 분류" 버튼 클릭 시 실행
+        {
+            IsDetectionSelected = true;
+            IsLoginSelected = false;
+            IsDashboardSelected = false;
+            // RadioButton 상태를 수동으로 관리
+            // → 선택된 버튼 하이라이트, 나머지 해제
+
+            _navigation.NavigateTo<DetectionViewModel>();
+            // NavigationService가 DI에서 DetectionViewModel을 resolve하고
+            // 이전 VM의 OnNavigatedFrom → 새 VM의 OnNavigatedTo 호출
+        }
+
+        [RelayCommand]
+        private void NavigateToLogin()
+        // 사이드바 "로그인" 버튼 클릭 시 실행 — 동일 패턴
+        {
+            IsDetectionSelected = false;
+            IsLoginSelected = true;
+            IsDashboardSelected = false;
+            _navigation.NavigateTo<LoginViewModel>();
+        }
+
+        [RelayCommand]
+        private void NavigateToDashboard()
+        // 사이드바 "대시보드" 버튼 클릭 시 실행 — 동일 패턴
+        {
+            IsDetectionSelected = false;
+            IsLoginSelected = false;
+            IsDashboardSelected = true;
+            _navigation.NavigateTo<DashboardViewModel>();
+        }
+    }
+}
 ```
 
-### 전체 레이아웃 구조
-
-```xml
-    <!-- 최상위 Grid: 좌우 2열 레이아웃 -->
-    <Grid Margin="20">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>      <!-- 왼쪽: 웹캠 영상 (나머지 공간 차지) -->
-            <ColumnDefinition Width="320"/>    <!-- 오른쪽: 컨트롤 패널 (고정 320px) -->
-        </Grid.ColumnDefinitions>
-```
-
-### 왼쪽 영역: 웹캠 영상
-
-```xml
-        <!-- 카드 스타일 Border로 감싼 웹캠 영역 -->
-        <Border Grid.Column="0" Style="{StaticResource CardStyle}" Margin="0,0,15,0">
-            <Grid>
-                <!-- 제목 행 + 영상 행 -->
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>   <!-- 제목: 내용만큼 -->
-                    <RowDefinition Height="*"/>       <!-- 영상: 나머지 -->
-                </Grid.RowDefinitions>
-
-                <!-- 제목 바 ("📹 웹캠 영상" + FPS 텍스트) -->
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
-                    <TextBlock Text="📹 웹캠 영상" FontSize="18" FontWeight="Bold" .../>
-                    <TextBlock Text="{Binding FpsText}" .../>
-                    <!-- {Binding FpsText}: ViewModel의 FpsText 프로퍼티와 연결 -->
-                </StackPanel>
-
-                <!-- 웹캠 이미지 표시 -->
-                <Border Grid.Row="1" Background="#000000" CornerRadius="5">
-                    <Image Source="{Binding CurrentFrame}" Stretch="Uniform"/>
-                    <!-- CurrentFrame: BitmapSource → 실시간 영상 표시 -->
-                    <!-- Stretch="Uniform": 종횡비 유지하면서 맞춤 -->
-                </Border>
-
-                <!-- 안내 오버레이 (반투명 검정 배경) -->
-                <Border Grid.Row="1" Background="#80000000" ...
-                        Visibility="{Binding OverlayVisibility}">
-                    <!-- OverlayVisibility: 시작 전=Visible, 시작 후=Collapsed -->
-                    <TextBlock Text="{Binding StatusMessage}" .../>
-                </Border>
-            </Grid>
-        </Border>
-```
-
-### 오른쪽 영역: 컨트롤 패널
-
-```xml
-        <!-- 4행 구조: 모델상태 / 컨트롤 / 탐지결과 / 총합 -->
-        <Grid Grid.Column="1">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>  <!-- 모델 상태 -->
-                <RowDefinition Height="Auto"/>  <!-- 컨트롤 -->
-                <RowDefinition Height="*"/>     <!-- 탐지 결과 (나머지 공간) -->
-                <RowDefinition Height="Auto"/>  <!-- 총 탐지 수 -->
-            </Grid.RowDefinitions>
-
-            <!-- ① 모델 상태 카드 -->
-            <!-- ModelStatusText("로드됨"), ModelStatusColor(녹색) 바인딩 -->
-            <!-- ModelPath: 로드된 파일 경로 표시 (ToolTip으로 전체 경로) -->
-
-            <!-- ② 컨트롤 카드 -->
-            <!-- [시작] 버튼: Command=StartCommand, IsEnabled=CanStart -->
-            <!-- [중지] 버튼: Command=StopCommand, IsEnabled=CanStop -->
-            <!-- 신뢰도 슬라이더: Value=ConfidenceThreshold (0.1 ~ 0.9) -->
-
-            <!-- ③ 탐지 결과 카드 -->
-            <!-- ItemsControl로 ClassCounts (5개 클래스) 표시 -->
-            <!-- 각 항목: [색상 아이콘] [클래스명] [카운트] -->
-            <!-- ItemsControl로 CurrentDetections (현재 프레임) 표시 -->
-            <!-- 각 항목: [클래스명] [신뢰도%] (색상: ConfidenceColor) -->
-
-            <!-- ④ 총 탐지 수 카드 -->
-            <!-- TotalDetections: 큰 폰트(28px)로 숫자 표시 -->
-        </Grid>
-```
+> **이전 MainViewModel과의 차이:**
+> - 이전: 500줄 이상, 웹캠/추론/UI 상태 모두 관리
+> - 현재: ~57줄, 네비게이션만 담당
+> - 단일 책임 원칙(SRP) 적용: 한 클래스는 하나의 역할만 수행
 
 ---
 
-## 5. MainWindow.xaml.cs
+## 8. MainWindow.xaml
 
-코드비하인드 — ViewModel을 생성하고 DataContext에 연결합니다.
+이전에는 웹캠 영상 + 컨트롤 패널이 직접 배치된 UI였지만,
+이제는 **사이드바 + ContentControl 셸** 구조로 변경되었습니다.
+실제 페이지 콘텐츠는 ViewModel에 따라 DataTemplate으로 자동 렌더링됩니다.
+
+```xml
+<!-- Window 선언 -->
+<Window x:Class="EggClassifier.MainWindow"
+        xmlns="..."   <!-- WPF 기본 네임스페이스 -->
+        xmlns:x="..." <!-- XAML 확장 네임스페이스 -->
+        Title="계란 품질 분류 시스템"
+        Height="720" Width="1280"
+        Background="{StaticResource BackgroundBrush}"
+        WindowStartupLocation="CenterScreen">
+```
+
+### 전체 레이아웃 구조 (2열: 사이드바 + 메인 콘텐츠)
+
+```xml
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="200"/>   <!-- 사이드바 (고정 200px) -->
+            <ColumnDefinition Width="*"/>      <!-- 메인 콘텐츠 (나머지 전체) -->
+        </Grid.ColumnDefinitions>
+```
+
+> **이전과의 차이:**
+> - 이전: `<ColumnDefinition Width="*"/>` + `<ColumnDefinition Width="320"/>`
+>   (왼쪽 웹캠 + 오른쪽 컨트롤 패널)
+> - 현재: `<ColumnDefinition Width="200"/>` + `<ColumnDefinition Width="*"/>`
+>   (왼쪽 사이드바 + 오른쪽 ContentControl)
+
+### 왼쪽 영역: 사이드바
+
+```xml
+        <!-- 사이드바: 어두운 배경 + 로고 + 네비게이션 버튼 -->
+        <Border Grid.Column="0" Background="#252525">
+            <StackPanel>
+                <!-- 로고/앱 이름 영역 -->
+                <TextBlock Text="EggClassifier"
+                           FontSize="16" FontWeight="Bold"
+                           Foreground="White" Margin="20,20,20,30"/>
+
+                <!-- 네비게이션 RadioButton: 계란 분류 -->
+                <RadioButton Style="{StaticResource NavButtonStyle}"
+                             Content="📷  계란 분류"
+                             IsChecked="{Binding IsDetectionSelected}"
+                             Command="{Binding NavigateToDetectionCommand}"/>
+                <!-- IsChecked: IsDetectionSelected 프로퍼티와 양방향 바인딩 -->
+                <!--   → true면 선택 상태 스타일 적용 (파란 보더 + 흰색 텍스트) -->
+                <!-- Command: 클릭 시 NavigateToDetection() 실행 -->
+                <!--   → NavigationService가 DetectionViewModel로 전환 -->
+
+                <!-- 네비게이션 RadioButton: 로그인 -->
+                <RadioButton Style="{StaticResource NavButtonStyle}"
+                             Content="🔐  로그인"
+                             IsChecked="{Binding IsLoginSelected}"
+                             Command="{Binding NavigateToLoginCommand}"/>
+
+                <!-- 네비게이션 RadioButton: 대시보드 -->
+                <RadioButton Style="{StaticResource NavButtonStyle}"
+                             Content="📊  대시보드"
+                             IsChecked="{Binding IsDashboardSelected}"
+                             Command="{Binding NavigateToDashboardCommand}"/>
+            </StackPanel>
+        </Border>
+```
+
+### 오른쪽 영역: 메인 콘텐츠 (ContentControl)
+
+```xml
+        <!-- 메인 콘텐츠: ViewModel에 따라 View가 자동 교체됨 -->
+        <ContentControl Grid.Column="1"
+                        Content="{Binding Navigation.CurrentView}"/>
+        <!-- Navigation: MainViewModel의 INavigationService 프로퍼티 -->
+        <!-- CurrentView: 현재 활성화된 ViewModelBase 인스턴스 -->
+        <!--
+             동작 원리:
+             1. Navigation.CurrentView가 DetectionViewModel이면
+             2. App.xaml의 DataTemplate이 매칭됨:
+                <DataTemplate DataType="{x:Type detection:DetectionViewModel}">
+                    <detection:DetectionView/>
+                </DataTemplate>
+             3. ContentControl 안에 DetectionView(UserControl)가 렌더링됨
+
+             CurrentView가 변경되면 → PropertyChanged 발생
+             → ContentControl이 새 DataTemplate을 찾아 View를 교체
+        -->
+    </Grid>
+</Window>
+```
+
+> **핵심 원리: ViewModel-First Navigation**
+> - 코드에서는 ViewModel만 교체 (`NavigateTo<DetectionViewModel>()`)
+> - View(UserControl)는 DataTemplate이 자동으로 매칭하여 렌더링
+> - View와 ViewModel의 연결을 App.xaml에서 선언적으로 정의
+
+---
+
+## 9. MainWindow.xaml.cs
+
+코드비하인드 — DI에서 MainViewModel을 주입받고 DataContext에 연결합니다.
 
 ```csharp
 using System.Windows;
@@ -1280,65 +1625,148 @@ namespace EggClassifier
 {
     public partial class MainWindow : Window
     {
-        private readonly MainViewModel _viewModel;
-
-        public MainWindow()
+        public MainWindow(MainViewModel viewModel)
+        // ★ DI에서 MainViewModel이 주입됨 (더 이상 new MainViewModel() 하지 않음)
+        // App.xaml.cs에서 MainWindow를 DI에 등록했으므로,
+        // ServiceProvider가 MainWindow를 생성할 때 MainViewModel도 함께 resolve하여 전달
         {
             InitializeComponent();          // XAML에서 정의한 UI 요소 초기화
-            _viewModel = new MainViewModel();   // ViewModel 인스턴스 생성
-            DataContext = _viewModel;            // View에 ViewModel 연결
-            // → XAML의 모든 {Binding ...}이 이 ViewModel의 프로퍼티를 참조
+            DataContext = viewModel;         // View에 ViewModel 연결
+            // → XAML의 모든 {Binding ...}이 이 MainViewModel의 프로퍼티를 참조
 
-            Closing += (s, e) =>
+            Loaded += (s, e) =>
             {
-                _viewModel.Dispose();
-                // 창 닫힐 때 ViewModel 정리 (웹캠 중지, 모델 해제)
+                viewModel.NavigateToDetectionCommand.Execute(null);
+                // 앱 시작 시 자동으로 "계란 분류" 페이지로 이동
+                // NavigateToDetection()이 실행되어 DetectionViewModel이 활성화됨
+                // → ContentControl에 DetectionView가 표시됨
             };
         }
     }
 }
 ```
 
+> **이전과의 차이:**
+> - 이전: `new MainViewModel()` → 직접 생성
+> - 현재: 생성자 파라미터로 DI 주입
+> - 이전: `Closing += ... _viewModel.Dispose()` → 수동 정리
+> - 현재: `Loaded += ... NavigateToDetectionCommand` → 초기 페이지 설정
+>   (정리는 NavigationService의 OnNavigatedFrom이 담당)
+
 ---
 
-## 6. App.xaml
+## 10. App.xaml
 
-WPF 앱의 전역 리소스를 정의합니다. 다크 테마 색상과 컨트롤 스타일이 포함됩니다.
+WPF 앱의 전역 리소스를 정의합니다.
+다크 테마 색상, 컨트롤 스타일에 더해 **DataTemplate**과 **NavButtonStyle**이 추가되었습니다.
+
+> **주요 변경:** `StartupUri="MainWindow.xaml"`이 제거되었습니다.
+> DI 컨테이너를 통해 MainWindow를 수동으로 생성하므로 StartupUri가 불필요합니다.
 
 ```xml
-<Application StartupUri="MainWindow.xaml">
-    <!-- StartupUri: 앱 시작 시 처음 열리는 윈도우 -->
+<Application x:Class="EggClassifier.App"
+             xmlns="..."
+             xmlns:x="..."
+             xmlns:detection="clr-namespace:EggClassifier.Views.Detection">
+    <!-- xmlns:detection: DetectionViewModel/DetectionView의 네임스페이스 매핑 -->
+    <!-- StartupUri 없음 — App.xaml.cs의 OnStartup에서 수동으로 MainWindow를 생성 -->
 
     <Application.Resources>
         <ResourceDictionary>
-            <!-- ── 색상 팔레트 ── -->
-            <!-- 모든 색상을 한 곳에서 정의하여 일관성 유지 -->
+            <!-- ── 색상 팔레트 (기존과 동일) ── -->
             <Color x:Key="PrimaryColor">#2196F3</Color>        <!-- 파랑 (메인 액센트) -->
             <Color x:Key="BackgroundColor">#1E1E1E</Color>     <!-- 거의 검정 (앱 배경) -->
             <Color x:Key="SurfaceColor">#2D2D2D</Color>        <!-- 어두운 회색 (카드 배경) -->
             <!-- ... 기타 색상 ... -->
 
-            <!-- Color → SolidColorBrush 변환 -->
-            <!-- XAML에서 Background에 직접 Color를 쓸 수 없으므로 Brush로 변환 -->
+            <!-- Color → SolidColorBrush 변환 (기존과 동일) -->
             <SolidColorBrush x:Key="PrimaryBrush" Color="{StaticResource PrimaryColor}"/>
             <!-- ... -->
+```
 
-            <!-- ── 버튼 스타일 ── -->
+### DataTemplate — ViewModel → View 자동 매핑
+
+```xml
+            <!-- ── DataTemplate: ViewModel → View 자동 매핑 ── -->
+            <DataTemplate DataType="{x:Type detection:DetectionViewModel}">
+                <detection:DetectionView/>
+            </DataTemplate>
+            <!--
+                 동작 원리:
+                 ContentControl에 DetectionViewModel 인스턴스가 세팅되면
+                 → WPF가 이 DataTemplate을 자동으로 찾아
+                 → DetectionView(UserControl)를 렌더링함
+
+                 새 페이지를 추가할 때:
+                 1. LoginViewModel/LoginView 생성
+                 2. 여기에 DataTemplate 추가:
+                    <DataTemplate DataType="{x:Type login:LoginViewModel}">
+                        <login:LoginView/>
+                    </DataTemplate>
+                 3. 끝! NavigateTo<LoginViewModel>()만 호출하면 자동으로 View가 표시됨
+            -->
+```
+
+### NavButtonStyle — 사이드바 RadioButton 커스텀 스타일
+
+```xml
+            <!-- ── NavButtonStyle: 사이드바 RadioButton 커스텀 스타일 ── -->
+            <Style x:Key="NavButtonStyle" TargetType="RadioButton">
+                <!-- RadioButton의 기본 동그라미 모양을 완전히 재정의하여
+                     사이드바 네비게이션 버튼처럼 보이게 함 -->
+
+                <!-- 기본 상태: 투명 배경, 회색 텍스트 (#AAAAAA) -->
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Foreground" Value="#AAAAAA"/>
+                <Setter Property="Padding" Value="20,12"/>
+                <Setter Property="FontSize" Value="14"/>
+
+                <!-- ControlTemplate: 시각적 구조 재정의 -->
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="RadioButton">
+                            <Border Background="{TemplateBinding Background}"
+                                    BorderBrush="Transparent"
+                                    BorderThickness="3,0,0,0">
+                                <!-- BorderThickness="3,0,0,0": 왼쪽에만 3px 보더 -->
+                                <!-- Checked 상태에서 파란색으로 변경됨 -->
+                                <ContentPresenter Margin="{TemplateBinding Padding}"/>
+                            </Border>
+
+                            <ControlTemplate.Triggers>
+                                <!-- Hover: #333333 배경 -->
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#333333"/>
+                                </Trigger>
+
+                                <!-- Checked: #333333 배경 + 좌측 파란 보더 + 흰색 텍스트 -->
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter Property="Background" Value="#333333"/>
+                                    <Setter Property="BorderBrush"
+                                            Value="{StaticResource PrimaryBrush}"/>
+                                    <!-- PrimaryBrush = #2196F3 파란색 -->
+                                    <Setter Property="Foreground" Value="White"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+```
+
+### 기존 스타일 (변경 없음)
+
+```xml
+            <!-- ── 버튼 스타일 (기존과 동일) ── -->
             <Style x:Key="PrimaryButtonStyle" TargetType="Button">
                 <!-- 기본: 파란색 배경, 흰색 텍스트, 둥근 모서리 -->
                 <!-- IsMouseOver 시: 진한 파란색 (#1976D2) -->
                 <!-- IsEnabled=False 시: 회색 배경 (#555555) -->
-                <Setter Property="Template">
-                    <!-- ControlTemplate: 버튼의 시각적 구조를 완전히 재정의 -->
-                    <Border Background=... CornerRadius="5" Padding=...>
-                        <ContentPresenter HorizontalAlignment="Center"/>
-                    </Border>
-                </Setter>
             </Style>
 
             <!-- DangerButtonStyle: PrimaryButtonStyle을 상속하고 색상만 빨강으로 변경 -->
 
-            <!-- ── 카드 스타일 ── -->
+            <!-- ── 카드 스타일 (기존과 동일) ── -->
             <Style x:Key="CardStyle" TargetType="Border">
                 <!-- 둥근 모서리(8px), 어두운 회색 배경, 15px 안쪽 여백 -->
             </Style>
@@ -1349,21 +1777,76 @@ WPF 앱의 전역 리소스를 정의합니다. 다크 테마 색상과 컨트�
 
 ---
 
-## 7. App.xaml.cs
+## 11. App.xaml.cs
 
-앱 시작점 — 전역 예외 처리기를 등록합니다.
+앱 시작점 — **DI(Dependency Injection) 컨테이너**를 구성하고 앱을 시작합니다.
+이전에는 전역 예외 처리만 있었지만, 이제 모든 서비스와 ViewModel의 등록을 담당합니다.
 
 ```csharp
+using Microsoft.Extensions.DependencyInjection;  // ServiceCollection, AddSingleton 등
+using System;
+using System.Windows;
+using EggClassifier.Core;
+using EggClassifier.Services;
+using EggClassifier.ViewModels;
+
 namespace EggClassifier
 {
     public partial class App : Application
     {
+        private readonly IServiceProvider _serviceProvider;
+        // DI 컨테이너 — 등록된 서비스/ViewModel을 resolve하는 역할
+
+        public App()
+        {
+            var services = new ServiceCollection();
+            // Microsoft.Extensions.DependencyInjection의 DI 컨테이너 빌더
+            // ASP.NET Core와 동일한 DI 프레임워크를 WPF에서도 사용
+
+            // ── Core — 앱 전체에서 1개만 사용 ──
+            services.AddSingleton<INavigationService, NavigationService>();
+            // Singleton: 앱 전체에서 NavigationService 인스턴스 1개만 생성
+            // INavigationService를 요청하면 항상 같은 인스턴스 반환
+            // → CurrentView 상태가 공유되어야 하므로 Singleton 필수
+
+            // ── Services — 공유 리소스이므로 Singleton ──
+            services.AddSingleton<IWebcamService, WebcamService>();
+            // WebcamService: 웹캠 장치는 하나이므로 인스턴스도 하나
+            // → 여러 ViewModel이 같은 웹캠을 공유
+
+            services.AddSingleton<IDetectorService, DetectorService>();
+            // DetectorService: ONNX 모델 로드는 비용이 크므로 한 번만 수행
+            // → 모든 DetectionViewModel이 같은 모델 인스턴스를 공유
+
+            // ── ViewModels ──
+            services.AddSingleton<MainViewModel>();
+            // MainViewModel은 1개 (셸 윈도우는 하나뿐)
+            // 사이드바 상태가 유지되어야 하므로 Singleton
+
+            services.AddTransient<DetectionViewModel>();
+            services.AddTransient<LoginViewModel>();
+            services.AddTransient<DashboardViewModel>();
+            // Feature ViewModel은 Transient: 페이지 전환마다 새 인스턴스 생성
+            // → 이전 상태가 남지 않음 (깨끗한 상태로 시작)
+            //
+            // Transient vs Singleton:
+            //   Transient: GetService할 때마다 new → 이전 상태 초기화됨
+            //   Singleton: 첫 GetService에서만 new → 이후 같은 인스턴스 재사용
+
+            // ── Window ──
+            services.AddSingleton<MainWindow>();
+            // MainWindow도 하나뿐이므로 Singleton
+
+            _serviceProvider = services.BuildServiceProvider();
+            // 등록 완료 → IServiceProvider 인스턴스 생성
+            // 이후 GetService<T>() / GetRequiredService<T>()로 인스턴스를 가져올 수 있음
+        }
+
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
 
-            // ── 전역 미처리 예외 핸들러 ──
-            // WPF UI 스레드에서 발생하는 모든 미처리 예외를 여기서 잡음
+            // ── 전역 미처리 예외 핸들러 (기존과 동일) ──
             DispatcherUnhandledException += (s, args) =>
             {
                 MessageBox.Show(
@@ -1373,17 +1856,33 @@ namespace EggClassifier
                     MessageBoxImage.Error
                 );
                 args.Handled = true;
-                // true: 예외를 처리한 것으로 표시 → 앱이 계속 실행됨
-                // false였다면: 앱이 크래시됨
             };
+
+            // ── MainWindow를 DI에서 resolve하여 표시 ──
+            var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
+            // GetRequiredService: 등록된 MainWindow 인스턴스를 가져옴
+            // → MainWindow(MainViewModel viewModel) 생성자가 호출됨
+            // → MainViewModel도 DI에서 자동으로 resolve되어 주입됨
+            //
+            // DI 해결 순서 (자동):
+            //   MainWindow 필요 → MainViewModel 필요 → INavigationService 필요
+            //   → NavigationService 생성 → MainViewModel 생성 → MainWindow 생성
+
+            mainWindow.Show();
+            // StartupUri 대신 수동으로 윈도우를 표시
         }
     }
 }
 ```
 
+> **이전과의 차이:**
+> - 이전: `OnStartup`에 예외 처리기만 있고, `StartupUri`로 MainWindow 자동 생성
+> - 현재: DI 컨테이너 구성 + `GetRequiredService`로 MainWindow 수동 생성
+> - DI 덕분에 모든 의존성이 명시적이고, 테스트/교체가 용이해짐
+
 ---
 
-## 8. EggClassifier.csproj
+## 12. EggClassifier.csproj
 
 프로젝트 설정 파일 — 빌드 옵션과 NuGet 패키지를 정의합니다.
 
@@ -1401,6 +1900,11 @@ namespace EggClassifier
     <!-- NuGet 패키지 의존성 -->
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
     <!-- MVVM 헬퍼: [ObservableProperty], [RelayCommand] 소스 생성기 -->
+
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
+    <!-- ★ 신규 추가: DI 컨테이너 -->
+    <!-- ServiceCollection, AddSingleton, AddTransient, BuildServiceProvider 등 제공 -->
+    <!-- ASP.NET Core와 동일한 DI 프레임워크를 WPF 데스크톱 앱에서도 사용 -->
 
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.16.3" />
     <!-- ONNX 모델 추론 엔진 (CPU + CUDA 지원) -->
@@ -1430,7 +1934,7 @@ namespace EggClassifier
 
 ---
 
-## 9. run_train.py
+## 13. run_train.py
 
 YOLOv8 모델 학습 스크립트입니다.
 
@@ -1480,7 +1984,7 @@ if __name__ == '__main__':
 
 ---
 
-## 10. export_onnx.py
+## 14. export_onnx.py
 
 학습된 PyTorch 모델을 ONNX 형식으로 변환합니다.
 
@@ -1509,7 +2013,7 @@ print('ONNX export complete!')
 
 ---
 
-## 11. test_inference.py
+## 15. test_inference.py
 
 학습된 모델로 검증 이미지를 테스트합니다.
 

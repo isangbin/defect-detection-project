@@ -32,22 +32,44 @@ AI Hub 계란 데이터셋으로 학습된 YOLOv8 객체 탐지 모델을 활용
 
 ```
 EggClassifier/
-├── EggClassifier.csproj        # 프로젝트 설정 (NuGet 패키지, 빌드 옵션)
-├── App.xaml                    # 전역 리소스 (테마 색상, 버튼 스타일)
-├── App.xaml.cs                 # 앱 시작점, 전역 예외 처리
-├── MainWindow.xaml             # 메인 UI 레이아웃 (XAML)
-├── MainWindow.xaml.cs          # 메인 윈도우 코드비하인드
+├── App.xaml / App.xaml.cs          # DI 컨테이너, DataTemplate 매핑, 전역 예외 처리
+├── MainWindow.xaml / .xaml.cs      # 셸 (사이드바 + ContentControl)
+├── EggClassifier.csproj            # NuGet 패키지 (DI 추가됨)
+├── Core/
+│   ├── ViewModelBase.cs            # 페이지 ViewModel 베이스 (OnNavigatedTo/From)
+│   ├── INavigationService.cs       # 네비게이션 인터페이스
+│   └── NavigationService.cs        # 네비게이션 구현 (DI resolve + PropertyChanged)
 ├── Models/
-│   ├── YoloDetector.cs         # ONNX 추론 엔진 (핵심 AI 로직)
-│   └── egg_classifier.onnx     # 학습된 ONNX 모델 파일
+│   ├── Detection.cs                # 탐지 결과 DTO
+│   ├── ClassCountItem.cs           # 클래스별 카운트 표시용
+│   ├── DetectionItem.cs            # 현재 탐지 표시용
+│   ├── YoloDetector.cs             # ONNX 추론 엔진
+│   └── egg_classifier.onnx         # 학습된 ONNX 모델 파일
 ├── Services/
-│   └── WebcamService.cs        # 웹캠 캡처 서비스
+│   ├── IWebcamService.cs           # 웹캠 서비스 인터페이스
+│   ├── WebcamService.cs            # 웹캠 캡처 구현
+│   ├── IDetectorService.cs         # 탐지 서비스 인터페이스
+│   └── DetectorService.cs          # YoloDetector 래핑 서비스
+├── Features/
+│   ├── Detection/                  # 팀원A: 계란 분류
+│   │   ├── DetectionView.xaml
+│   │   ├── DetectionView.xaml.cs
+│   │   └── DetectionViewModel.cs
+│   ├── Login/                      # 팀원B: 로그인
+│   │   ├── LoginView.xaml
+│   │   ├── LoginView.xaml.cs
+│   │   └── LoginViewModel.cs
+│   └── Dashboard/                  # 팀원C: DB 시각화
+│       ├── DashboardView.xaml
+│       ├── DashboardView.xaml.cs
+│       └── DashboardViewModel.cs
 ├── ViewModels/
-│   └── MainViewModel.cs        # MVVM ViewModel (UI ↔ 로직 연결)
+│   └── MainViewModel.cs            # 네비게이션 전용 (~57줄)
 └── docs/
-    ├── GUIDELINES.md           # 개발 가이드라인
-    ├── CODE_REFERENCE.md       # 코드 라인별 상세 해설
-    └── API_SPEC.md             # API/클래스 기능명세서
+    ├── PROJECT_STRUCTURE.md         # 프로젝트 구조 상세 가이드
+    ├── GUIDELINES.md
+    ├── CODE_REFERENCE.md
+    └── API_SPEC.md
 ```
 
 ---
@@ -79,11 +101,11 @@ dotnet run
 
 ### 3. 사용 방법
 
-1. 앱 실행 → 우측 패널에서 "모델 상태"가 **로드됨(녹색)** 인지 확인
-2. **[시작]** 버튼 클릭 → 웹캠 영상 활성화
-3. 계란을 웹캠 앞에 배치 → 자동으로 바운딩박스 + 클래스 + 신뢰도 표시
-4. **신뢰도 임계값** 슬라이더로 민감도 조절 (기본 50%)
-5. **[중지]** 버튼으로 웹캠 정지
+1. 앱 실행 → 좌측 사이드바에서 "계란 분류" 선택 (기본)
+2. 우측 패널에서 모델 상태 확인 (녹색 = 로드됨)
+3. **[시작]** 버튼 → 웹캠 활성화 → 실시간 분류
+4. 사이드바에서 "로그인", "대시보드" 전환 가능
+5. 페이지 전환 시 웹캠 자동 정지/재시작
 
 ---
 
@@ -101,10 +123,10 @@ dotnet run
 [후처리]                    YoloDetector.cs - Postprocess()
   (바운딩박스 디코딩 + 좌표 복원 + NMS)
         ↓
-[결과 시각화]               MainViewModel.cs - OnFrameCaptured()
+[결과 시각화]               DetectionViewModel.cs - OnFrameCaptured()
   (바운딩박스 그리기 + UI 업데이트)
         ↓
-[화면 표시]                 MainWindow.xaml
+[화면 표시]                 Features/Detection/DetectionView.xaml
   (웹캠 영상 + 탐지 결과 패널)
 ```
 
@@ -153,6 +175,7 @@ dotnet run
 | 런타임 | .NET | 8.0 | 앱 프레임워크 |
 | UI | WPF | - | 데스크톱 UI |
 | MVVM | CommunityToolkit.Mvvm | 8.2.2 | 데이터 바인딩 |
+| DI 컨테이너 | Microsoft.Extensions.DependencyInjection | 8.0.1 | 의존성 주입 |
 | AI 추론 | Microsoft.ML.OnnxRuntime | 1.16.3 | ONNX 모델 실행 |
 | 영상처리 | OpenCvSharp4 | 4.9.0 | 웹캠, 이미지 처리 |
 | 학습 | Ultralytics YOLOv8 | 8.4.11 | 모델 학습 (Python) |
@@ -160,8 +183,34 @@ dotnet run
 
 ---
 
+## 모델 교체 체크리스트
+
+```
+[ ] best.pt → ONNX 변환 완료
+[ ] 클래스 수가 변경되었으면 YoloDetector.cs의 ClassNames 배열 수정
+[ ] 클래스 수가 변경되었으면 ClassColors 배열도 동일하게 수정
+[ ] 클래스 수가 변경되었으면 Features/Detection/DetectionViewModel.cs의 ClassBrushes 배열도 수정
+[ ] egg_classifier.onnx를 Models/ 폴더에 복사
+[ ] 빌드 후 테스트 이미지로 추론 확인
+```
+
+---
+
+## 팀원별 개발 가이드
+
+| 팀원 | 담당 폴더 | 역할 |
+|------|-----------|------|
+| A | `Features/Detection/` | 계란 분류 (웹캠 + YOLO 감지) |
+| B | `Features/Login/` | 로그인 / 회원가입 |
+| C | `Features/Dashboard/` | DB 시각화 / 통계 대시보드 |
+
+> 자세한 구조 설명과 새 Feature/Service 추가 방법은 [프로젝트 구조 가이드](docs/PROJECT_STRUCTURE.md)를 참고하세요.
+
+---
+
 ## 상세 문서
 
+- [프로젝트 구조 가이드 (PROJECT_STRUCTURE.md)](docs/PROJECT_STRUCTURE.md)
 - [개발 가이드라인 (GUIDELINES.md)](docs/GUIDELINES.md)
 - [코드 라인별 해설 (CODE_REFERENCE.md)](docs/CODE_REFERENCE.md)
 - [API 기능명세서 (API_SPEC.md)](docs/API_SPEC.md)
