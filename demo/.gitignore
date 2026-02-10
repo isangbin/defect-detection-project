@@ -1,0 +1,34 @@
+# ── C# 빌드 산출물 ──
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+*.cache
+
+# ── ONNX 모델 (용량이 크므로 Git에 포함하지 않음) ──
+# 학습 후 직접 배치하세요
+*.onnx
+
+# ── Python ──
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+
+# ── 학습 결과 (ultralytics) ──
+runs/
+
+# ── 데이터셋 (용량이 매우 크므로 Git에 포함하지 않음) ──
+data/images/
+data/labels/
+
+# ── IDE ──
+.vs/
+.vscode/
+*.user
+*.suo
+
+# ── OS ──
+Thumbs.db
+.DS_Store

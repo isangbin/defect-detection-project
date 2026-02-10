@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "dgSpecHash": "nM3Nc7XzroQ=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\tedya\\source\\repos\\Smart_Factory\\project\\project_Egg_Classification\\demo\\EggClassifier\\EggClassifier.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\tedya\\.nuget\\packages\\communitytoolkit.mvvm\\8.2.2\\communitytoolkit.mvvm.8.2.2.nupkg.sha512",
+    "C:\\Users\\tedya\\.nuget\\packages\\microsoft.extensions.dependencyinjection\\8.0.1\\microsoft.extensions.dependencyinjection.8.0.1.nupkg.sha512",
+    "C:\\Users\\tedya\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\8.0.2\\microsoft.extensions.dependencyinjection.abstractions.8.0.2.nupkg.sha512",
+    "C:\\Users\\tedya\\.nuget\\packages\\microsoft.ml.onnxruntime\\1.16.3\\microsoft.ml.onnxruntime.1.16.3.nupkg.sha512",
+    "C:\\Users\\tedya\\.nuget\\packages\\microsoft.ml.onnxruntime.managed\\1.16.3\\microsoft.ml.onnxruntime.managed.1.16.3.nupkg.sha512",
+    "C:\\Users\\tedya\\.nuget\\packages\\microsoft.win32.systemevents\\8.0.0\\microsoft.win32.systemevents.8.0.0.nupkg.sha512",
+    "C:\\Users\\tedya\\.nuget\\packages\\opencvsharp4\\4.9.0.20240103\\opencvsharp4.4.9.0.20240103.nupkg.sha512",
+    "C:\\Users\\tedya\\.nuget\\packages\\opencvsharp4.extensions\\4.9.0.20240103\\opencvsharp4.extensions.4.9.0.20240103.nupkg.sha512",
+    "C:\\Users\\tedya\\.nuget\\packages\\opencvsharp4.runtime.win\\4.9.0.20240103\\opencvsharp4.runtime.win.4.9.0.20240103.nupkg.sha512",
+    "C:\\Users\\tedya\\.nuget\\packages\\opencvsharp4.wpfextensions\\4.9.0.20240103\\opencvsharp4.wpfextensions.4.9.0.20240103.nupkg.sha512",
+    "C:\\Users\\tedya\\.nuget\\packages\\system.drawing.common\\8.0.1\\system.drawing.common.8.0.1.nupkg.sha512",
+    "C:\\Users\\tedya\\.nuget\\packages\\system.memory\\4.5.5\\system.memory.4.5.5.nupkg.sha512",
+    "C:\\Users\\tedya\\.nuget\\packages\\system.runtime.compilerservices.unsafe\\6.0.0\\system.runtime.compilerservices.unsafe.6.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}
