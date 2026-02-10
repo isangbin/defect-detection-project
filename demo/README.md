@@ -2,6 +2,7 @@
 
 YOLOv8 + C# WPF 기반 계란 품질 실시간 분류 시스템입니다.
 웹캠으로 촬영한 계란의 품질을 AI가 자동으로 분류합니다.
+로그인 시 아이디/비밀번호 + 얼굴인식 2차 인증(MobileFaceNet)을 지원합니다.
 
 ## 분류 클래스 (5종)
 
@@ -33,41 +34,50 @@ demo/
 ├── USAGE.md                        ← 상세 사용 가이드
 ├── .gitignore
 │
-├── training/                       ← Python 학습 스크립트
+├── training/                       ← Python 학습/모델 스크립트
 │   ├── convert_xml_to_yolo.py      ← AI Hub XML → YOLO 포맷 변환
 │   ├── train.py                    ← YOLOv8 모델 학습
 │   ├── export_onnx.py              ← ONNX 내보내기
+│   ├── download_face_models.py     ← 얼굴인식 모델 다운로드
 │   └── requirements.txt            ← Python 의존성
 │
 ├── data/                           ← YOLO 데이터셋 (변환 후 생성, Git 미포함)
 │   └── .gitkeep
 │
-├── models/                         ← 학습된 ONNX 모델 (Git 미포함)
-│   └── .gitkeep
+├── models/                         ← ONNX 모델 파일 (Git 미포함)
+│   ├── egg_classifier.onnx         ← 계란 분류 모델
+│   ├── haarcascade_frontalface_default.xml  ← 얼굴 탐지 모델
+│   └── mobilefacenet.onnx          ← 얼굴 임베딩 모델
 │
 └── EggClassifier/                  ← C# WPF 애플리케이션 (Feature 기반 모듈 구조)
     ├── App.xaml / App.xaml.cs      ← DI 컨테이너, DataTemplate 매핑
-    ├── MainWindow.xaml / .xaml.cs  ← 셸 (사이드바 + ContentControl)
+    ├── MainWindow.xaml / .xaml.cs  ← 셸 (사이드바 + ContentControl, 로그인 상태 연동)
     ├── Core/                       ← 네비게이션 인프라
     │   ├── ViewModelBase.cs        ← 페이지 ViewModel 베이스
     │   ├── INavigationService.cs   ← 네비게이션 인터페이스
     │   └── NavigationService.cs    ← 네비게이션 구현
-    ├── Models/                     ← 데이터 모델 + 추론 엔진
+    ├── Models/                     ← 데이터 모델 + AI 추론 엔진
     │   ├── Detection.cs            ← 탐지 결과 DTO
     │   ├── ClassCountItem.cs       ← 클래스별 카운트 표시용
     │   ├── DetectionItem.cs        ← 현재 탐지 표시용
-    │   └── YoloDetector.cs         ← ONNX 추론 엔진
+    │   ├── YoloDetector.cs         ← 계란 분류 ONNX 추론 엔진
+    │   ├── FaceEmbedder.cs         ← 얼굴 임베딩 ONNX 추론 엔진
+    │   └── UserData.cs             ← 사용자 데이터 DTO
     ├── Services/                   ← 서비스 인터페이스 + 구현
     │   ├── IWebcamService.cs       ← 웹캠 인터페이스
     │   ├── WebcamService.cs        ← 웹캠 캡처 구현
     │   ├── IDetectorService.cs     ← 탐지 인터페이스
-    │   └── DetectorService.cs      ← YoloDetector 래핑
+    │   ├── DetectorService.cs      ← YoloDetector 래핑
+    │   ├── IFaceService.cs         ← 얼굴 탐지/임베딩 인터페이스
+    │   ├── FaceService.cs          ← Haar Cascade + FaceEmbedder 래핑
+    │   ├── IUserService.cs         ← 사용자 CRUD 인터페이스
+    │   └── UserService.cs          ← JSON 파일 기반 사용자 저장소
     ├── Features/                   ← 팀원별 독립 개발 영역
     │   ├── Detection/              ← 팀원A: 계란 분류 (웹캠+YOLO)
-    │   ├── Login/                  ← 팀원B: 로그인
+    │   ├── Login/                  ← 팀원B: 로그인 (2FA) + 회원가입
     │   └── Dashboard/              ← 팀원C: DB 시각화
     ├── ViewModels/
-    │   └── MainViewModel.cs        ← 네비게이션 전용
+    │   └── MainViewModel.cs        ← 네비게이션 + 로그인 상태 관리
     ├── docs/                       ← 상세 문서
     │   ├── PROJECT_STRUCTURE.md    ← 프로젝트 구조 가이드
     │   ├── GUIDELINES.md           ← 개발 가이드라인
@@ -112,7 +122,14 @@ python train.py --data ../data/data.yaml --model n --epochs 50 --batch 32
 python export_onnx.py --model runs/detect/egg_classifier/weights/best.pt --output ../models --verify
 ```
 
-### Step 2: C# 앱 실행
+### Step 2: 얼굴인식 모델 다운로드
+
+```bash
+cd training
+python download_face_models.py
+```
+
+### Step 3: C# 앱 실행
 
 ```bash
 # 1. ONNX 모델 배치
@@ -124,12 +141,14 @@ dotnet restore
 dotnet run
 ```
 
-### Step 3: 사용
+### Step 4: 사용
 
-1. 앱 실행 → 우측 "모델 상태"가 **로드됨(녹색)** 확인
-2. **[시작]** 클릭 → 웹캠 활성화
-3. 계란을 카메라에 비추면 자동 분류
-4. 신뢰도 슬라이더로 민감도 조절
+1. 앱 실행 → **로그인 페이지** 표시
+2. "회원가입" → 아이디/비밀번호 입력 + 얼굴 촬영 → "가입하기"
+3. 아이디/비밀번호 입력 → "로그인" → 얼굴 인증 (웹캠 자동 시작)
+4. 인증 성공 → "계란 분류" 페이지 자동 이동
+5. **[시작]** 클릭 → 웹캠 활성화 → 계란 자동 분류
+6. 사이드바에서 "대시보드" 전환, "로그아웃" 가능
 
 ---
 
@@ -137,11 +156,13 @@ dotnet run
 
 | 구분 | 기술 | 용도 |
 |------|------|------|
-| AI 모델 | YOLOv8n (Ultralytics) | 객체 탐지 |
+| AI 모델 (계란) | YOLOv8n (Ultralytics) | 계란 품질 객체 탐지 |
+| AI 모델 (얼굴) | Haar Cascade + MobileFaceNet | 얼굴 탐지 + 임베딩 추출 |
 | 추론 엔진 | Microsoft.ML.OnnxRuntime | ONNX 모델 실행 |
 | 영상 처리 | OpenCvSharp4 | 웹캠 캡처, 이미지 전처리 |
 | UI | WPF (.NET 8.0) | 데스크톱 애플리케이션 |
 | MVVM | CommunityToolkit.Mvvm | 데이터 바인딩 |
+| 인증 | SHA256 + 얼굴인식 2FA | 로그인 보안 |
 | 학습 | PyTorch + Ultralytics | 모델 학습 (Python) |
 
 ---

@@ -14,10 +14,13 @@ namespace EggClassifier.ViewModels
         public INavigationService Navigation => _navigation;
 
         [ObservableProperty]
-        private bool _isDetectionSelected = true;
+        private bool _isLoggedIn;
 
         [ObservableProperty]
-        private bool _isLoginSelected;
+        private bool _isDetectionSelected;
+
+        [ObservableProperty]
+        private bool _isLoginSelected = true;
 
         [ObservableProperty]
         private bool _isDashboardSelected;
@@ -27,9 +30,16 @@ namespace EggClassifier.ViewModels
             _navigation = navigationService;
         }
 
+        public void OnLoginSuccess()
+        {
+            IsLoggedIn = true;
+            NavigateToDetection();
+        }
+
         [RelayCommand]
         private void NavigateToDetection()
         {
+            if (!IsLoggedIn) return;
             IsDetectionSelected = true;
             IsLoginSelected = false;
             IsDashboardSelected = false;
@@ -48,10 +58,18 @@ namespace EggClassifier.ViewModels
         [RelayCommand]
         private void NavigateToDashboard()
         {
+            if (!IsLoggedIn) return;
             IsDetectionSelected = false;
             IsLoginSelected = false;
             IsDashboardSelected = true;
             _navigation.NavigateTo<DashboardViewModel>();
+        }
+
+        [RelayCommand]
+        private void Logout()
+        {
+            IsLoggedIn = false;
+            NavigateToLogin();
         }
     }
 }

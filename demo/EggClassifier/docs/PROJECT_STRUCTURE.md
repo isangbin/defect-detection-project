@@ -21,34 +21,43 @@ EggClassifier/
 │   ├── INavigationService.cs         네비게이션 인터페이스
 │   └── NavigationService.cs          네비게이션 구현체
 │
-├── Models/                         ← 데이터 모델
+├── Models/                         ← 데이터 모델 + AI 추론 엔진
 │   ├── Detection.cs                  탐지 결과 (ClassId, ClassName, Confidence, BoundingBox)
 │   ├── ClassCountItem.cs             클래스별 카운트 표시용
 │   ├── DetectionItem.cs              현재 탐지 표시용
-│   └── YoloDetector.cs               YOLOv8 ONNX 추론 엔진
+│   ├── YoloDetector.cs               YOLOv8 ONNX 추론 엔진 (계란 분류)
+│   ├── FaceEmbedder.cs               MobileFaceNet ONNX 얼굴 임베딩 엔진
+│   └── UserData.cs                   사용자 데이터 DTO (UserData + UserStore)
 │
 ├── Services/                       ← 비즈니스 로직 서비스
 │   ├── IWebcamService.cs             웹캠 인터페이스
 │   ├── WebcamService.cs              웹캠 구현체
 │   ├── IDetectorService.cs           탐지 인터페이스
-│   └── DetectorService.cs            탐지 구현체 (YoloDetector 래핑)
+│   ├── DetectorService.cs            탐지 구현체 (YoloDetector 래핑)
+│   ├── IFaceService.cs               얼굴 탐지/임베딩 서비스 인터페이스
+│   ├── FaceService.cs                Haar Cascade + FaceEmbedder 래핑
+│   ├── IUserService.cs               사용자 CRUD 서비스 인터페이스
+│   └── UserService.cs                JSON 파일 기반 사용자 저장소 (SHA256+Salt)
 │
 ├── Features/                       ← ★ 팀원별 작업 영역 ★
 │   ├── Detection/                    팀원A: 계란 분류
 │   │   ├── DetectionView.xaml
 │   │   ├── DetectionView.xaml.cs
 │   │   └── DetectionViewModel.cs
-│   ├── Login/                        팀원B: 로그인
-│   │   ├── LoginView.xaml
-│   │   ├── LoginView.xaml.cs
-│   │   └── LoginViewModel.cs
+│   ├── Login/                        팀원B: 로그인 + 회원가입
+│   │   ├── LoginView.xaml              2단계 로그인 UI (자격증명 → 얼굴인증)
+│   │   ├── LoginView.xaml.cs           PasswordBox 바인딩 헬퍼
+│   │   ├── LoginViewModel.cs           2단계 로그인 로직 (비밀번호 + 얼굴 2FA)
+│   │   ├── SignUpView.xaml             회원가입 UI (폼 + 웹캠 얼굴 촬영)
+│   │   ├── SignUpView.xaml.cs          PasswordBox 바인딩 헬퍼
+│   │   └── SignUpViewModel.cs          회원가입 로직 (얼굴 이미지 저장)
 │   └── Dashboard/                    팀원C: DB 시각화
 │       ├── DashboardView.xaml
 │       ├── DashboardView.xaml.cs
 │       └── DashboardViewModel.cs
 │
 ├── ViewModels/
-│   └── MainViewModel.cs            ← 네비게이션 커맨드만 담당 (~57줄)
+│   └── MainViewModel.cs            ← 네비게이션 + 로그인 상태 관리
 │
 └── docs/                           ← 문서
 ```
@@ -70,8 +79,16 @@ EggClassifier/
 ## 네비게이션 동작 원리
 
 ```
+앱 시작 → MainWindow.Loaded → NavigateToLoginCommand 실행 → 로그인 페이지 표시
+  (사이드바는 IsLoggedIn = false이므로 숨김 상태)
+
+[로그인 성공 후]
+  → MainViewModel.OnLoginSuccess() → IsLoggedIn = true → 사이드바 표시
+  → NavigateToDetection() → 계란 분류 페이지로 이동
+
 사이드바 RadioButton 클릭
   → MainViewModel.NavigateToXxxCommand 실행
+  → if (!IsLoggedIn) return; (로그인 상태 확인)
   → NavigationService.NavigateTo<XxxViewModel>() 호출
     → 이전 VM.OnNavigatedFrom()  (예: 웹캠 정지)
     → DI 컨테이너에서 새 VM 생성
@@ -79,6 +96,10 @@ EggClassifier/
     → CurrentView 프로퍼티 변경
   → ContentControl이 변경 감지
   → App.xaml의 DataTemplate에 따라 해당 View(UserControl) 렌더링
+
+[로그아웃]
+  → MainViewModel.LogoutCommand → IsLoggedIn = false → 사이드바 숨김
+  → NavigateToLogin() → 로그인 페이지로 이동
 ```
 
 ---
@@ -256,8 +277,15 @@ dotnet run
 ## 검증 체크리스트
 
 - [ ] `dotnet build` 오류 없음
-- [ ] 앱 실행 → 사이드바 3개 버튼 표시
+- [ ] 앱 실행 → 로그인 페이지 표시 (시작 페이지)
+- [ ] 사이드바 숨김 상태 확인 (로그인 전)
+- [ ] "회원가입" 클릭 → 회원가입 페이지 이동
+- [ ] 아이디/비밀번호 입력 → 비밀번호 확인 일치/불일치 메시지 표시
+- [ ] "얼굴 등록" → 웹캠 시작 → "촬영" → 사진 확인/재촬영
+- [ ] "가입하기" → 로그인 페이지로 이동
+- [ ] 등록한 아이디/비밀번호로 로그인 → 얼굴 인증 단계 진입
+- [ ] 얼굴 일치 시 → 사이드바 표시 + 계란 분류 페이지로 이동
 - [ ] "계란 분류" 클릭 → 웹캠 + YOLO 감지 동작
-- [ ] "로그인" 클릭 → 로그인 폼 표시
 - [ ] "대시보드" 클릭 → 대시보드 카드 표시
+- [ ] "로그아웃" 클릭 → 사이드바 숨김 + 로그인 페이지로 이동
 - [ ] 페이지 전환 시 웹캠 정상 정지/재시작

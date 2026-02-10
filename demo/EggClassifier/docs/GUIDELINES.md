@@ -138,35 +138,39 @@ Model/Service:
 ### 3.1 전체 아키텍처 다이어그램
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                      WPF App (DI Container)              │
-│                                                          │
-│  ┌──────────────┐    ┌────────────────────────────────┐ │
-│  │ MainWindow   │    │ MainViewModel                  │ │
-│  │ (셸)         │◄──►│ (네비게이션 커맨드만)            │ │
-│  │ 사이드바      │    │                                │ │
-│  │ + ContentCtrl│    │ NavigationService               │ │
-│  └──────────────┘    └────────┬───────────────────────┘ │
-│                               │ NavigateTo<T>()          │
-│                    ┌──────────┼──────────────┐          │
-│                    ▼          ▼              ▼          │
-│          ┌──────────┐  ┌──────────┐  ┌──────────────┐  │
-│          │Detection │  │ Login    │  │ Dashboard    │  │
-│          │ViewModel │  │ViewModel │  │ ViewModel    │  │
-│          │ + View   │  │ + View   │  │ + View       │  │
-│          └────┬─────┘  └──────────┘  └──────────────┘  │
-│               │                                         │
-│        ┌──────┼──────┐                                  │
-│        ▼             ▼                                  │
-│  ┌───────────┐  ┌──────────────┐                       │
-│  │IWebcam   │  │IDetector     │                       │
-│  │Service   │  │Service       │                       │
-│  │(웹캠)    │  │(YOLO 추론)   │                       │
-│  └───────────┘  └──────────────┘                       │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                      WPF App (DI Container)                       │
+│                                                                   │
+│  ┌──────────────┐    ┌──────────────────────────────────────┐    │
+│  │ MainWindow   │    │ MainViewModel                        │    │
+│  │ (셸)         │◄──►│ (네비게이션 + 로그인 상태 관리)        │    │
+│  │ 사이드바      │    │ IsLoggedIn, OnLoginSuccess(), Logout │    │
+│  │ + ContentCtrl│    │ NavigationService                    │    │
+│  └──────────────┘    └─────────┬────────────────────────────┘    │
+│                                │ NavigateTo<T>()                  │
+│               ┌────────────────┼────────────────┐                │
+│               ▼                ▼                ▼                │
+│     ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
+│     │ Detection    │  │ Login        │  │ Dashboard    │       │
+│     │ ViewModel    │  │ ViewModel    │  │ ViewModel    │       │
+│     │ + View       │  │ + View       │  │ + View       │       │
+│     └──────┬───────┘  │ + SignUp     │  └──────────────┘       │
+│            │           │ ViewModel   │                          │
+│            │           │ + View      │                          │
+│            │           └──────┬──────┘                          │
+│     ┌──────┼──────┐    ┌─────┼──────────────┐                  │
+│     ▼             ▼    ▼     ▼              ▼                  │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐          │
+│  │IWebcam  │ │IDetector │ │IFace     │ │IUser     │          │
+│  │Service  │ │Service   │ │Service   │ │Service   │          │
+│  │(웹캠)   │ │(YOLO)    │ │(얼굴AI)  │ │(사용자DB)│          │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘          │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ### 3.2 데이터 흐름
+
+#### 계란 분류 흐름
 
 ```
 1. WebcamService가 백그라운드 스레드에서 프레임 캡처
@@ -179,6 +183,30 @@ Model/Service:
 5. Detection 리스트가 반환됨
 6. DrawDetections()로 이미지에 바운딩박스 그리기
 7. BitmapSource로 변환 → Freeze → BeginInvoke로 UI 업데이트
+```
+
+#### 로그인 얼굴 인증 흐름
+
+```
+1. LoginViewModel이 저장된 얼굴 이미지 로드 (Cv2.ImRead)
+2. FaceService.GetFaceEmbedding()으로 저장된 얼굴 임베딩 추출
+3. WebcamService가 실시간 프레임 캡처 시작
+4. 매 프레임:
+   a. FaceService.DetectFace() → Haar Cascade로 얼굴 영역 탐지
+   b. 얼굴 크롭 (20% 마진) → FaceService.GetFaceEmbedding()
+   c. FaceService.CompareFaces() → 코사인 유사도 계산
+   d. 유사도 >= 80%: 연속 매칭 카운트 증가
+   e. 연속 매칭 달성 → 로그인 성공 → MainViewModel.OnLoginSuccess()
+```
+
+#### 회원가입 얼굴 촬영 흐름
+
+```
+1. SignUpViewModel이 웹캠 시작 (StartFaceCapture)
+2. 매 프레임: Haar Cascade 얼굴 탐지 → 사각형 표시 → UI 업데이트
+3. "촬영" 클릭 → 현재 프레임 캡처 → 얼굴 크롭 → 썸네일 표시
+4. "확인" 클릭 → Mat 이미지 확정 (모델 불필요, 순수 이미지 저장)
+5. "가입하기" 클릭 → Cv2.ImWrite()로 PNG 저장 → UserService.RegisterUser()
 ```
 
 ### 3.3 스레딩 모델
@@ -293,6 +321,9 @@ python export_onnx.py
 | 메모리 증가 | Mat 객체 미해제 | Dispose() 호출 확인 |
 | 학습 시 CUBLAS 에러 | Muon 옵티마이저 BF16 호환성 | optimizer='SGD'로 변경 |
 | 바운딩박스 위치 부정확 | 전처리 방식 불일치 | Letterbox 전처리 사용 확인 |
+| 얼굴인식 모델 없음 | haarcascade/mobilefacenet 파일 없음 | `python training/download_face_models.py` 실행 |
+| 얼굴 인증 실패 | 유사도가 임계값 미달 | 조명/각도 조정, SIMILARITY_THRESHOLD 조정 |
+| "등록된 얼굴 이미지를 찾을 수 없습니다" | 얼굴 이미지 파일 삭제됨 | userdata/faces/ 폴더 확인, 재등록 |
 
 ### 5.2 성능 튜닝
 
@@ -336,9 +367,11 @@ dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=
 
 ```
 배포 폴더/
-├── EggClassifier.exe         # 실행 파일
+├── EggClassifier.exe                       # 실행 파일
 ├── Models/
-│   └── egg_classifier.onnx   # ONNX 모델 (반드시 포함!)
+│   └── egg_classifier.onnx                 # 계란 분류 ONNX 모델
+├── haarcascade_frontalface_default.xml      # 얼굴 탐지 모델
+├── mobilefacenet.onnx                       # 얼굴 임베딩 ONNX 모델
 └── (기타 런타임 DLL - self-contained 시 포함됨)
 ```
 

@@ -73,21 +73,35 @@ python export_onnx.py \
 
 ---
 
-## Phase 2: C# 애플리케이션
+## Phase 2: 얼굴인식 모델 다운로드
 
-### 2.1 빌드
+```bash
+cd training
+python download_face_models.py
+```
+
+> `models/` 폴더에 `haarcascade_frontalface_default.xml`과 `mobilefacenet.onnx`가 생성됩니다.
+> 이 모델들은 로그인 시 얼굴인식 2차 인증에 사용됩니다.
+
+---
+
+## Phase 3: C# 애플리케이션
+
+### 3.1 빌드
 ```bash
 cd EggClassifier
 dotnet restore
 dotnet build --configuration Release
 ```
 
-### 2.2 모델 배치
+### 3.2 모델 배치
 학습 완료된 `egg_classifier.onnx` 파일을 다음 위치 중 하나에 배치:
 - `EggClassifier/Models/egg_classifier.onnx`
 - `models/egg_classifier.onnx`
 
-### 2.3 실행
+> 얼굴인식 모델(`haarcascade_frontalface_default.xml`, `mobilefacenet.onnx`)은 Phase 2에서 `models/` 폴더에 다운로드됩니다.
+
+### 3.3 실행
 ```bash
 dotnet run --configuration Release
 ```
@@ -98,18 +112,30 @@ dotnet run --configuration Release
 
 ## 애플리케이션 사용법
 
-### UI 구성
-- **웹캠 영상**: 실시간 영상 + 탐지 결과 오버레이
-- **모델 상태**: ONNX 모델 로드 상태 표시
-- **컨트롤**: 시작/중지 버튼, 신뢰도 임계값 조절
-- **탐지 결과**: 클래스별 개수 및 현재 탐지 목록
+### 회원가입
+1. 앱 실행 → 로그인 페이지에서 "회원가입" 클릭
+2. 아이디, 비밀번호, 비밀번호 확인 입력
+   - 비밀번호 일치/불일치 실시간 표시
+3. "얼굴 등록" 클릭 → 웹캠 시작 + 실시간 얼굴 탐지
+4. "촬영" 클릭 → 얼굴 사진 미리보기 표시
+5. "확인" 또는 "재촬영" 선택
+6. "가입하기" 클릭 → 등록 완료 → 로그인 페이지로 이동
 
-### 조작
-1. 웹캠 연결 확인
-2. **시작** 버튼 클릭
-3. 계란을 웹캠에 비추면 자동 탐지
+### 로그인 (2단계 인증)
+1. 아이디 + 비밀번호 입력 → "로그인" 클릭 (1단계: 자격증명)
+2. 웹캠 자동 시작 → 얼굴을 카메라에 맞춤 (2단계: 얼굴 인증)
+3. 유사도 80% 이상 연속 매칭 시 → 자동 로그인 성공
+4. "취소" 버튼으로 1단계로 복귀 가능
+
+### 계란 분류
+1. 로그인 성공 후 "계란 분류" 페이지 자동 이동
+2. 우측 패널에서 모델 상태 확인 (녹색 = 로드됨)
+3. **시작** 버튼 클릭 → 웹캠 활성화 → 실시간 분류
 4. 신뢰도 임계값 슬라이더로 민감도 조절
 5. **중지** 버튼으로 종료
+
+### 로그아웃
+- 좌측 사이드바 하단 "로그아웃" 클릭 → 로그인 페이지로 복귀
 
 ---
 
@@ -137,10 +163,11 @@ dotnet run --configuration Release
 
 ```
 demo/
-├── training/                    # Python 학습 환경
+├── training/                    # Python 학습/모델 환경
 │   ├── convert_xml_to_yolo.py  # AI Hub XML → YOLO 변환
 │   ├── train.py                # YOLOv8 학습 (SGD, argparse)
 │   ├── export_onnx.py          # ONNX 내보내기 + 검증
+│   ├── download_face_models.py # 얼굴인식 모델 다운로드 스크립트
 │   └── requirements.txt        # Python 의존성
 │
 ├── data/                        # YOLO 데이터셋 (변환 후 생성됨)
@@ -150,17 +177,27 @@ demo/
 │   ├── labels/train/           # 학습 라벨 (.txt)
 │   └── labels/val/             # 검증 라벨 (.txt)
 │
-├── models/                      # 학습된 ONNX 모델
-│   └── egg_classifier.onnx     # (export 후 생성됨)
+├── models/                      # ONNX 모델 파일
+│   ├── egg_classifier.onnx     # 계란 분류 모델 (export 후 생성)
+│   ├── haarcascade_frontalface_default.xml  # 얼굴 탐지 모델
+│   └── mobilefacenet.onnx      # 얼굴 임베딩 모델
 │
 └── EggClassifier/              # C# WPF 프로젝트
     ├── Models/
-    │   ├── YoloDetector.cs     # ONNX 추론 엔진 (Letterbox 전처리)
+    │   ├── YoloDetector.cs     # 계란 분류 ONNX 추론 엔진
+    │   ├── FaceEmbedder.cs     # 얼굴 임베딩 ONNX 추론 엔진
+    │   ├── UserData.cs         # 사용자 데이터 DTO
     │   └── egg_classifier.onnx # (models/에서 복사)
     ├── Services/
-    │   └── WebcamService.cs    # 웹캠 캡처 서비스
+    │   ├── WebcamService.cs    # 웹캠 캡처 서비스
+    │   ├── FaceService.cs      # 얼굴 탐지/임베딩 서비스
+    │   └── UserService.cs      # JSON 기반 사용자 저장소
+    ├── Features/
+    │   ├── Detection/          # 계란 분류 페이지
+    │   ├── Login/              # 로그인 + 회원가입 (얼굴인식 2FA)
+    │   └── Dashboard/          # 대시보드 페이지
     ├── ViewModels/
-    │   └── MainViewModel.cs    # MVVM ViewModel
+    │   └── MainViewModel.cs    # 네비게이션 + 로그인 상태 관리
     └── docs/                   # 상세 문서
         ├── GUIDELINES.md       # 개발 가이드라인
         ├── API_SPEC.md         # API 기능명세서
