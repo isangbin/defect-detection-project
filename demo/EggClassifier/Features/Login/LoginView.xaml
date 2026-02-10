@@ -1,0 +1,48 @@
+<UserControl x:Class="EggClassifier.Features.Login.LoginView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="680" d:DesignWidth="1060">
+
+    <Grid VerticalAlignment="Center" HorizontalAlignment="Center" Width="400">
+        <Border Style="{StaticResource CardStyle}" Padding="30">
+            <StackPanel>
+                <TextBlock Text="&#x1F512; 로그인"
+                           FontSize="24" FontWeight="Bold"
+                           Foreground="{StaticResource TextBrush}"
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,30"/>
+
+                <!-- 사용자명 -->
+                <TextBlock Text="사용자명"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           Margin="0,0,0,5"/>
+                <TextBox Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
+                         FontSize="14" Padding="10,8"
+                         Margin="0,0,0,15"/>
+
+                <!-- 비밀번호 -->
+                <TextBlock Text="비밀번호"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           Margin="0,0,0,5"/>
+                <PasswordBox FontSize="14" Padding="10,8"
+                             Margin="0,0,0,20"/>
+
+                <!-- 로그인 버튼 -->
+                <Button Content="로그인"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Command="{Binding LoginCommand}"
+                        HorizontalAlignment="Stretch"
+                        Margin="0,0,0,15"/>
+
+                <!-- 상태 메시지 -->
+                <TextBlock Text="{Binding StatusMessage}"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           FontSize="12"
+                           HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

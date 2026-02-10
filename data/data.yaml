@@ -1,0 +1,22 @@
+# Egg Quality Classification Dataset
+# 이 파일은 convert_xml_to_yolo.py 실행 후 자동 생성됩니다.
+# 수동 설정 시 아래 내용을 수정하세요.
+
+path: C:/Users/tedya/source/repos/Smart_Factory/project/project_CSharp/data
+train: images/train
+val: images/val
+
+# Classes
+names:
+  0: normal
+  1: crack
+  2: foreign_matter
+  3: discoloration
+  4: deformed
+
+# Korean names (for reference)
+# 0: 정상
+# 1: 크랙
+# 2: 이물질
+# 3: 탈색
+# 4: 외형이상
