@@ -4,16 +4,16 @@
 winexe
 C#
 .cs
-C:\Users\tedya\source\repos\Smart_Factory\project\project_Egg_Classification\demo\EggClassifier\obj\Debug\net8.0-windows\
+C:\Users\ysb\Desktop\Csharp\defect-detection-project\demo\EggClassifier\obj\Debug\net8.0-windows\
 EggClassifier
 none
 false
 TRACE;DEBUG;NET;NET8_0;NETCOREAPP;WINDOWS;WINDOWS7_0;NET5_0_OR_GREATER;NET6_0_OR_GREATER;NET7_0_OR_GREATER;NET8_0_OR_GREATER;NETCOREAPP3_0_OR_GREATER;NETCOREAPP3_1_OR_GREATER;WINDOWS7_0_OR_GREATER
-C:\Users\tedya\source\repos\Smart_Factory\project\project_Egg_Classification\demo\EggClassifier\App.xaml
+C:\Users\ysb\Desktop\Csharp\defect-detection-project\demo\EggClassifier\App.xaml
 42063795265
 
-211351212516
-206-668029978
+22340501465
+208592395434
 Features\Dashboard\DashboardView.xaml;Features\Detection\DetectionView.xaml;Features\Login\LoginView.xaml;MainWindow.xaml;
 
 False

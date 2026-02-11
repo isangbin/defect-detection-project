@@ -82,17 +82,56 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Text="최근 검사 로그"
-                           FontSize="16" FontWeight="Bold"
-                           Foreground="{StaticResource TextBrush}"
-                           Margin="0,0,0,10"/>
+                <Grid Grid.Row="0" Margin="0,0,0,15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="3*"/>
+                        <ColumnDefinition Width="1*"/>
+                    </Grid.ColumnDefinitions>
 
-                <TextBlock Grid.Row="1"
-                           Text="{Binding LogMessage}"
-                           Foreground="{StaticResource TextSecondaryBrush}"
-                           FontStyle="Italic"
+
+                    <DockPanel Grid.Column="0" LastChildFill="False">
+                        <TextBlock Text="최근 검사 로그" 
+                           FontSize="16" FontWeight="Bold" 
+                           Foreground="{StaticResource TextBrush}" 
                            VerticalAlignment="Center"
-                           HorizontalAlignment="Center"/>
+                           DockPanel.Dock="Left"
+                           Margin="0,0,20,0"/>
+                        <StackPanel Orientation="Horizontal"
+                                    DockPanel.Dock="Right"
+                                    VerticalAlignment="Center">
+                            <RadioButton Content="전체" GroupName="EggFilter" Command="{Binding SetFilterCommand}" CommandParameter="-1" IsChecked="True" Foreground="White" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                            <RadioButton Content="정상" GroupName="EggFilter" Command="{Binding SetFilterCommand}" CommandParameter="0" Foreground="White" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                            <RadioButton Content="크랙" GroupName="EggFilter" Command="{Binding SetFilterCommand}" CommandParameter="1" Foreground="White" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                            <RadioButton Content="이물질" GroupName="EggFilter" Command="{Binding SetFilterCommand}" CommandParameter="2" Foreground="White" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                            <RadioButton Content="탈색" GroupName="EggFilter" Command="{Binding SetFilterCommand}" CommandParameter="3" Foreground="White" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                            <RadioButton Content="외형이상" GroupName="EggFilter" Command="{Binding SetFilterCommand}" CommandParameter="4" Foreground="White" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </DockPanel>
+                </Grid>
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="3*"/>
+                        <ColumnDefinition Width="1*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <ListBox Grid.Column="0" 
+                     ItemsSource="{Binding InspectionLogs}"
+                     SelectedItem="{Binding SelectedLog}"
+                     Background="Transparent" BorderThickness="0"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="#1AFFFFFF" BorderThickness="0,0,0,1" Padding="8">
+                                    <TextBlock Text="{Binding DisplayText}" Foreground="{StaticResource TextSecondaryBrush}" FontFamily="Consolas"/>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <Border Grid.Column="1" Margin="15,0,0,0" Background="#1AFFFFFF" CornerRadius="8">
+                        <Image Source="{Binding SelectedImageSource}" Stretch="Uniform" Margin="10"/>
+                    </Border>
+                </Grid>
             </Grid>
         </Border>
     </Grid>
