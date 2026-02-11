@@ -1,5 +1,6 @@
 using EggClassifier.Models.Database;
 using OpenCvSharp;
+using Npgsql;
 
 namespace EggClassifier.Services;
 
@@ -9,6 +10,7 @@ namespace EggClassifier.Services;
 public class InspectionService : IInspectionService
 {
     private readonly SupabaseService _supabaseService;
+    private readonly string _connString = "Host=aws-1-ap-northeast-2.pooler.supabase.com;Port=6543;Database=postgres;Username=postgres.vvsdcdlazsqkwmaevmvq;Password=dlatkdqls1264";
 
     public InspectionService(SupabaseService supabaseService)
     {
@@ -21,8 +23,13 @@ public class InspectionService : IInspectionService
         {
             System.Diagnostics.Debug.WriteLine($"[SaveInspection] 시작 - UserId: {userId}, Class: {eggClass}");
 
-            // Mat → byte[] 변환
-            var imageBytes = eggImage.ToBytes(".png");
+            // Mat → byte[] 변환 (JPEG 형식)
+            var success = Cv2.ImEncode(".jpg", eggImage, out var imageBytes);
+            if (!success || imageBytes == null || imageBytes.Length == 0)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SaveInspection] 이미지 인코딩 실패");
+                return false;
+            }
             System.Diagnostics.Debug.WriteLine($"[SaveInspection] 이미지 변환 완료 - Size: {imageBytes.Length} bytes");
 
             // Storage에 이미지 업로드
@@ -37,23 +44,32 @@ public class InspectionService : IInspectionService
                 System.Diagnostics.Debug.WriteLine($"[SaveInspection] Storage 업로드 성공 - URL: {imageUrl}");
             }
 
-            // DB에 저장
-            var client = await _supabaseService.GetClientAsync().ConfigureAwait(false);
-            var inspection = new EggEntity
-            {
-                UserId = userId,
-                EggClass = eggClass,
-                Accuracy = accuracy,
-                InspectDate = DateTime.Now,
-                EggImage = imageBytes,
-                EggImageUrl = imageUrl
-            };
-
+            // DB에 저장 (Npgsql 직접 사용 - bytea에 바이너리 그대로 저장)
             System.Diagnostics.Debug.WriteLine($"[SaveInspection] DB 저장 시도...");
-            var response = await client.From<EggEntity>().Insert(inspection).ConfigureAwait(false);
-            System.Diagnostics.Debug.WriteLine($"[SaveInspection] DB 저장 완료");
 
-            return response != null;
+            using (var conn = new NpgsqlConnection(_connString))
+            {
+                await conn.OpenAsync().ConfigureAwait(false);
+
+                string sql = @"
+                    INSERT INTO egg (user_id, egg_class, accuracy, inspect_date, egg_image, egg_image_url)
+                    VALUES (@user_id, @egg_class, @accuracy, @inspect_date, @egg_image, @egg_image_url)";
+
+                using (var cmd = new NpgsqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("user_id", userId);
+                    cmd.Parameters.AddWithValue("egg_class", eggClass);
+                    cmd.Parameters.AddWithValue("accuracy", accuracy);
+                    cmd.Parameters.AddWithValue("inspect_date", DateTime.Now);
+                    cmd.Parameters.AddWithValue("egg_image", imageBytes);  // bytea에 바이너리 직접 저장
+                    cmd.Parameters.AddWithValue("egg_image_url", imageUrl ?? (object)DBNull.Value);
+
+                    await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+                }
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[SaveInspection] DB 저장 완료");
+            return true;
         }
         catch (Exception ex)
         {
@@ -75,9 +91,9 @@ public class InspectionService : IInspectionService
             var client = await _supabaseService.GetClientAsync().ConfigureAwait(false);
             System.Diagnostics.Debug.WriteLine($"[UploadStorage] Supabase 클라이언트 획득 완료");
 
-            // 파일명: {userId}_{timestamp}.png
+            // 파일명: {userId}_{timestamp}.jpg
             var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
-            var fileName = $"{userId}_{timestamp}.png";
+            var fileName = $"{userId}_{timestamp}.jpg";
             System.Diagnostics.Debug.WriteLine($"[UploadStorage] 파일명 생성: {fileName}");
 
             // eggs 버킷에 업로드 시도
@@ -87,7 +103,7 @@ public class InspectionService : IInspectionService
                 .From("eggs")
                 .Upload(imageBytes, fileName, new Supabase.Storage.FileOptions
                 {
-                    ContentType = "image/png",
+                    ContentType = "image/jpeg",
                     Upsert = true
                 })
                 .ConfigureAwait(false);
