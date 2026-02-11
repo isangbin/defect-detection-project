@@ -8,7 +8,7 @@ obj/
 
 # ── ONNX 모델 (용량이 크므로 Git에 포함하지 않음) ──
 # 학습 후 직접 배치하세요
-*.onnx
+#*.onnx
 
 # ── Python ──
 __pycache__/

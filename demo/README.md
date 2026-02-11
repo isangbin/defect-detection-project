@@ -45,12 +45,31 @@ demo/
 ├── models/                         ← 학습된 ONNX 모델 (Git 미포함)
 │   └── .gitkeep
 │
-└── EggClassifier/                  ← C# WPF 애플리케이션
-    ├── Models/YoloDetector.cs      ← ONNX 추론 엔진
-    ├── Services/WebcamService.cs   ← 웹캠 캡처 서비스
-    ├── ViewModels/MainViewModel.cs ← MVVM ViewModel
-    ├── MainWindow.xaml             ← UI 레이아웃
+└── EggClassifier/                  ← C# WPF 애플리케이션 (Feature 기반 모듈 구조)
+    ├── App.xaml / App.xaml.cs      ← DI 컨테이너, DataTemplate 매핑
+    ├── MainWindow.xaml / .xaml.cs  ← 셸 (사이드바 + ContentControl)
+    ├── Core/                       ← 네비게이션 인프라
+    │   ├── ViewModelBase.cs        ← 페이지 ViewModel 베이스
+    │   ├── INavigationService.cs   ← 네비게이션 인터페이스
+    │   └── NavigationService.cs    ← 네비게이션 구현
+    ├── Models/                     ← 데이터 모델 + 추론 엔진
+    │   ├── Detection.cs            ← 탐지 결과 DTO
+    │   ├── ClassCountItem.cs       ← 클래스별 카운트 표시용
+    │   ├── DetectionItem.cs        ← 현재 탐지 표시용
+    │   └── YoloDetector.cs         ← ONNX 추론 엔진
+    ├── Services/                   ← 서비스 인터페이스 + 구현
+    │   ├── IWebcamService.cs       ← 웹캠 인터페이스
+    │   ├── WebcamService.cs        ← 웹캠 캡처 구현
+    │   ├── IDetectorService.cs     ← 탐지 인터페이스
+    │   └── DetectorService.cs      ← YoloDetector 래핑
+    ├── Features/                   ← 팀원별 독립 개발 영역
+    │   ├── Detection/              ← 팀원A: 계란 분류 (웹캠+YOLO)
+    │   ├── Login/                  ← 팀원B: 로그인
+    │   └── Dashboard/              ← 팀원C: DB 시각화
+    ├── ViewModels/
+    │   └── MainViewModel.cs        ← 네비게이션 전용
     ├── docs/                       ← 상세 문서
+    │   ├── PROJECT_STRUCTURE.md    ← 프로젝트 구조 가이드
     │   ├── GUIDELINES.md           ← 개발 가이드라인
     │   ├── API_SPEC.md             ← API 기능명세서
     │   └── CODE_REFERENCE.md       ← 코드 라인별 해설
