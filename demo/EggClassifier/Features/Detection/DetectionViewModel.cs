@@ -11,6 +11,7 @@ using OpenCvSharp.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Threading;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
@@ -37,6 +38,9 @@ namespace EggClassifier.Features.Detection
         private readonly Dictionary<int, TrackedEgg> _trackedEggs = new();
         private int _nextTrackId = 1;
         private string? _currentUserId;
+
+        // 프레임 스킵: 이전 프레임 처리 중이면 새 프레임 건너뛰기
+        private int _isProcessing = 0;
 
         private static readonly SolidColorBrush[] ClassBrushes = new[]
         {
@@ -212,6 +216,13 @@ namespace EggClassifier.Features.Detection
 
         private void OnFrameCaptured(object? sender, FrameCapturedEventArgs e)
         {
+            // 이전 프레임 처리 중이면 스킵 (딜레이 방지)
+            if (Interlocked.CompareExchange(ref _isProcessing, 1, 0) != 0)
+            {
+                e.Frame.Dispose();
+                return;
+            }
+
             try
             {
                 var frame = e.Frame;
@@ -243,6 +254,10 @@ namespace EggClassifier.Features.Detection
             catch (Exception ex)
             {
                 Console.WriteLine($"Frame processing error: {ex.Message}");
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _isProcessing, 0);
             }
         }
 

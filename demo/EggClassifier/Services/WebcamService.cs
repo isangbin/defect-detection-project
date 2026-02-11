@@ -38,7 +38,7 @@ namespace EggClassifier.Services
         public int CameraIndex { get; set; } = 0;
         public int FrameWidth { get; set; } = 640;
         public int FrameHeight { get; set; } = 480;
-        public int TargetFps { get; set; } =20;
+        public int TargetFps { get; set; } = 30;
 
         /// <summary>
         /// 웹캠 캡처 시작
@@ -57,6 +57,9 @@ namespace EggClassifier.Services
                     ErrorOccurred?.Invoke(this, "웹캠을 열 수 없습니다. 카메라가 연결되어 있는지 확인하세요.");
                     return false;
                 }
+
+                // MJPG 코덱 설정 (비압축보다 전송 빠름)
+                _capture.Set(VideoCaptureProperties.FourCC, VideoWriter.FourCC('M', 'J', 'P', 'G'));
 
                 // 해상도 및 FPS 설정
                 _capture.Set(VideoCaptureProperties.FrameWidth, FrameWidth);
@@ -118,24 +121,43 @@ namespace EggClassifier.Services
         private void CaptureLoop(CancellationToken ct)
         {
             var frame = new Mat();
-            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var fpsSw = System.Diagnostics.Stopwatch.StartNew();
+            var frameSw = System.Diagnostics.Stopwatch.StartNew();
             int frameCount = 0;
             double fps = 0;
 
-            int frameInterval = 1000 / TargetFps;
+            int frameIntervalMs = 1000 / TargetFps;
 
             while (!ct.IsCancellationRequested)
             {
                 try
                 {
+                    frameSw.Restart();
+
+                    bool grabbed;
                     lock (_lock)
                     {
                         if (_capture == null || !_capture.IsOpened())
                             break;
 
-                        if (!_capture.Read(frame) || frame.Empty())
+                        // Grab만 하고 불필요한 버퍼 프레임 버리기
+                        grabbed = _capture.Grab();
+                    }
+
+                    if (!grabbed)
+                    {
+                        Thread.Sleep(1);
+                        continue;
+                    }
+
+                    lock (_lock)
+                    {
+                        if (_capture == null || !_capture.IsOpened())
+                            break;
+
+                        if (!_capture.Retrieve(frame) || frame.Empty())
                         {
-                            Thread.Sleep(10);
+                            Thread.Sleep(1);
                             continue;
                         }
                     }
@@ -143,19 +165,24 @@ namespace EggClassifier.Services
                     frameCount++;
 
                     // FPS 계산 (1초마다)
-                    if (sw.ElapsedMilliseconds >= 1000)
+                    if (fpsSw.ElapsedMilliseconds >= 1000)
                     {
-                        fps = frameCount * 1000.0 / sw.ElapsedMilliseconds;
+                        fps = frameCount * 1000.0 / fpsSw.ElapsedMilliseconds;
                         frameCount = 0;
-                        sw.Restart();
+                        fpsSw.Restart();
                     }
 
                     // 프레임 복사하여 이벤트 발생 (원본 보호)
                     var frameCopy = frame.Clone();
                     FrameCaptured?.Invoke(this, new FrameCapturedEventArgs(frameCopy, fps));
 
-                    // 프레임 레이트 조절
-                    Thread.Sleep(Math.Max(1, frameInterval - 5));
+                    // 처리 시간을 고려한 정밀 대기
+                    int elapsed = (int)frameSw.ElapsedMilliseconds;
+                    int sleepMs = frameIntervalMs - elapsed;
+                    if (sleepMs > 1)
+                    {
+                        Thread.Sleep(sleepMs);
+                    }
                 }
                 catch (OperationCanceledException)
                 {

@@ -7,6 +7,7 @@ using EggClassifier.ViewModels;
 using OpenCvSharp;
 using OpenCvSharp.WpfExtensions;
 using System;
+using System.Threading;
 using System.Windows;
 using System.IO;
 using System.Windows.Media.Imaging;
@@ -26,6 +27,7 @@ namespace EggClassifier.Features.Login
         private const float SIMILARITY_THRESHOLD = 0.8f;
         private const int REQUIRED_CONSECUTIVE_FRAMES = 10;
         private int _consecutiveMatchCount;
+        private int _isProcessing = 0;
 
         // Phase 1: 자격증명 입력
         [ObservableProperty]
@@ -199,6 +201,12 @@ namespace EggClassifier.Features.Login
 
         private void OnFrameCaptured(object? sender, FrameCapturedEventArgs e)
         {
+            if (Interlocked.CompareExchange(ref _isProcessing, 1, 0) != 0)
+            {
+                e.Frame.Dispose();
+                return;
+            }
+
             try
             {
                 var frame = e.Frame;
@@ -276,6 +284,10 @@ namespace EggClassifier.Features.Login
             catch (Exception ex)
             {
                 Console.WriteLine($"Face verify frame error: {ex.Message}");
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _isProcessing, 0);
             }
         }
 
