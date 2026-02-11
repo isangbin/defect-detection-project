@@ -10,13 +10,17 @@
         WindowStartupLocation="CenterScreen">
 
     <Grid>
+        <Grid.Resources>
+            <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        </Grid.Resources>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="200"/>
+            <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <!-- 사이드바 -->
-        <Border Grid.Column="0" Background="#252525">
+        <!-- 사이드바 (로그인 후에만 표시) -->
+        <Border Grid.Column="0" Background="#252525" Width="200"
+                Visibility="{Binding IsLoggedIn, Converter={StaticResource BoolToVis}}">
             <DockPanel>
                 <!-- 로고/타이틀 -->
                 <StackPanel DockPanel.Dock="Top" Margin="15,20,15,30">
@@ -36,13 +40,18 @@
                                  IsChecked="{Binding IsDetectionSelected}"
                                  Command="{Binding NavigateToDetectionCommand}"/>
                     <RadioButton Style="{StaticResource NavButtonStyle}"
-                                 Content="&#x1F512;  로그인"
-                                 IsChecked="{Binding IsLoginSelected}"
-                                 Command="{Binding NavigateToLoginCommand}"/>
-                    <RadioButton Style="{StaticResource NavButtonStyle}"
                                  Content="&#x1F4CA;  대시보드"
                                  IsChecked="{Binding IsDashboardSelected}"
                                  Command="{Binding NavigateToDashboardCommand}"/>
+                </StackPanel>
+
+                <!-- 로그아웃 버튼 (하단) -->
+                <StackPanel DockPanel.Dock="Bottom" Margin="10,0,10,15">
+                    <Button Content="&#x1F6AA;  로그아웃"
+                            Style="{StaticResource DangerButtonStyle}"
+                            Command="{Binding LogoutCommand}"
+                            HorizontalAlignment="Stretch"
+                            FontSize="12" Padding="10,8"/>
                 </StackPanel>
 
                 <!-- 빈 공간 채우기 -->

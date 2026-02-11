@@ -6,10 +6,16 @@
              mc:Ignorable="d"
              d:DesignHeight="680" d:DesignWidth="1060">
 
-    <Grid VerticalAlignment="Center" HorizontalAlignment="Center" Width="400">
-        <Border Style="{StaticResource CardStyle}" Padding="30">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </UserControl.Resources>
+
+    <Grid VerticalAlignment="Center" HorizontalAlignment="Center" Width="450">
+        <!-- Phase 1: 자격증명 입력 -->
+        <Border Style="{StaticResource CardStyle}" Padding="30"
+                Visibility="{Binding IsCredentialPhase, Converter={StaticResource BoolToVis}}">
             <StackPanel>
-                <TextBlock Text="&#x1F512; 로그인"
+                <TextBlock Text="로그인"
                            FontSize="24" FontWeight="Bold"
                            Foreground="{StaticResource TextBrush}"
                            HorizontalAlignment="Center"
@@ -27,21 +33,75 @@
                 <TextBlock Text="비밀번호"
                            Foreground="{StaticResource TextSecondaryBrush}"
                            Margin="0,0,0,5"/>
-                <PasswordBox FontSize="14" Padding="10,8"
-                             Margin="0,0,0,20"/>
+                <PasswordBox x:Name="PasswordBox"
+                             FontSize="14" Padding="10,8"
+                             Margin="0,0,0,20"
+                             PasswordChanged="PasswordBox_PasswordChanged"/>
 
                 <!-- 로그인 버튼 -->
                 <Button Content="로그인"
                         Style="{StaticResource PrimaryButtonStyle}"
                         Command="{Binding LoginCommand}"
                         HorizontalAlignment="Stretch"
+                        Margin="0,0,0,10"/>
+
+                <!-- 회원가입 버튼 -->
+                <Button Content="회원가입"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Command="{Binding NavigateToSignUpCommand}"
+                        HorizontalAlignment="Stretch"
+                        Background="#555555"
                         Margin="0,0,0,15"/>
 
                 <!-- 상태 메시지 -->
                 <TextBlock Text="{Binding StatusMessage}"
-                           Foreground="{StaticResource TextSecondaryBrush}"
                            FontSize="12"
-                           HorizontalAlignment="Center"/>
+                           HorizontalAlignment="Center"
+                           TextWrapping="Wrap">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsStatusError}" Value="True">
+                                    <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </StackPanel>
+        </Border>
+
+        <!-- Phase 2: 얼굴 인증 -->
+        <Border Style="{StaticResource CardStyle}" Padding="20"
+                Visibility="{Binding IsFaceVerifyPhase, Converter={StaticResource BoolToVis}}">
+            <StackPanel>
+                <TextBlock Text="얼굴 인증"
+                           FontSize="24" FontWeight="Bold"
+                           Foreground="{StaticResource TextBrush}"
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,15"/>
+
+                <!-- 웹캠 프리뷰 -->
+                <Border Background="#1E1E1E" CornerRadius="5"
+                        Height="340" Margin="0,0,0,15">
+                    <Image Source="{Binding CurrentFrame}"
+                           Stretch="Uniform"/>
+                </Border>
+
+                <!-- 얼굴 인증 상태 -->
+                <TextBlock Text="{Binding FaceStatusMessage}"
+                           Foreground="{StaticResource WarningBrush}"
+                           FontSize="14" FontWeight="SemiBold"
+                           HorizontalAlignment="Center"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,15"/>
+
+                <!-- 취소 버튼 -->
+                <Button Content="취소"
+                        Style="{StaticResource DangerButtonStyle}"
+                        Command="{Binding CancelFaceVerifyCommand}"
+                        HorizontalAlignment="Stretch"/>
             </StackPanel>
         </Border>
     </Grid>

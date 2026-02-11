@@ -18,7 +18,20 @@
 14. [EggClassifier.Features.Detection.DetectionViewModel](#14-detectionviewmodel-클래스)
 15. [EggClassifier.Features.Login.LoginViewModel](#15-loginviewmodel-클래스)
 16. [EggClassifier.Features.Dashboard.DashboardViewModel](#16-dashboardviewmodel-클래스)
-17. [Python Scripts](#17-python-스크립트)
+17. [EggClassifier.Models.UserData](#17-userdata-클래스)
+18. [EggClassifier.Models.FaceEmbedder](#18-faceembedder-클래스)
+19. [EggClassifier.Services.IFaceService](#19-ifaceservice-인터페이스)
+20. [EggClassifier.Services.FaceService](#20-faceservice-클래스)
+21. [EggClassifier.Services.IUserService](#21-iuserservice-인터페이스)
+22. [EggClassifier.Services.UserService](#22-userservice-클래스-레거시)
+23. [EggClassifier.Services.SupabaseService](#23-supabaseservice-클래스)
+24. [EggClassifier.Services.SupabaseUserService](#24-supabaseuserservice-클래스)
+25. [EggClassifier.Services.IInspectionService](#25-iinspectionservice-인터페이스)
+26. [EggClassifier.Services.InspectionService](#26-inspectionservice-클래스)
+27. [EggClassifier.Models.Database.UserEntity](#27-userentity-클래스)
+28. [EggClassifier.Models.Database.EggEntity](#28-eggentity-클래스)
+29. [EggClassifier.Features.Login.SignUpViewModel](#29-signupviewmodel-클래스)
+30. [Python Scripts](#30-python-스크립트)
 
 ---
 
@@ -484,17 +497,30 @@ ONNX InferenceSession을 해제합니다.
 | 프로퍼티 | 타입 | 설명 |
 |----------|------|------|
 | `Navigation` | `INavigationService` | 네비게이션 서비스 (ContentControl 바인딩) |
+| `IsLoggedIn` | `bool` | 로그인 상태 (사이드바 표시/숨김 제어) |
 | `IsDetectionSelected` | `bool` | 계란 분류 탭 선택 상태 |
-| `IsLoginSelected` | `bool` | 로그인 탭 선택 상태 |
+| `IsLoginSelected` | `bool` | 로그인 탭 선택 상태 (시작 시 true) |
 | `IsDashboardSelected` | `bool` | 대시보드 탭 선택 상태 |
+
+### 메서드
+
+#### `void OnLoginSuccess()`
+
+로그인 성공 시 호출됩니다.
+
+| 항목 | 내용 |
+|------|------|
+| **동작** | `IsLoggedIn = true` 설정 후 `NavigateToDetection()` 호출 |
+| **호출자** | `LoginViewModel` (얼굴 인증 성공 시) |
 
 ### 커맨드
 
 | 커맨드 | 동작 |
 |--------|------|
-| `NavigateToDetectionCommand` | DetectionViewModel로 이동 |
+| `NavigateToDetectionCommand` | DetectionViewModel로 이동 (`IsLoggedIn` 필수) |
 | `NavigateToLoginCommand` | LoginViewModel로 이동 |
-| `NavigateToDashboardCommand` | DashboardViewModel로 이동 |
+| `NavigateToDashboardCommand` | DashboardViewModel로 이동 (`IsLoggedIn` 필수) |
+| `LogoutCommand` | `IsLoggedIn = false` 설정 후 로그인 페이지로 이동 |
 
 ---
 
@@ -533,25 +559,70 @@ ONNX InferenceSession을 해제합니다.
 
 ---
 
-## 15. LoginViewModel 클래스 (스텁)
+## 15. LoginViewModel 클래스
 
 **네임스페이스:** `EggClassifier.Features.Login`
 **파일:** `Features/Login/LoginViewModel.cs`
 **부모 클래스:** `ViewModelBase`
-**역할:** 로그인 페이지 (미구현 스텁)
+**인터페이스:** `IDisposable`
+**역할:** 2단계 로그인 (1단계: 자격증명 검증, 2단계: 얼굴인식 2FA)
+
+### 생성자
+
+| 매개변수 | 타입 | 설명 |
+|----------|------|------|
+| `navigation` | `INavigationService` | DI에서 주입 |
+| `webcamService` | `IWebcamService` | DI에서 주입 (얼굴 인증용) |
+| `faceService` | `IFaceService` | DI에서 주입 (얼굴 탐지/임베딩) |
+| `userService` | `IUserService` | DI에서 주입 (사용자 검증) |
+| `mainViewModel` | `MainViewModel` | DI에서 주입 (로그인 성공 알림) |
+
+### 상수
+
+| 상수 | 값 | 설명 |
+|------|-----|------|
+| `SIMILARITY_THRESHOLD` | `0.8f` | 얼굴 유사도 임계값 (80%) |
+| `REQUIRED_CONSECUTIVE_FRAMES` | `10` | 연속 매칭 필요 프레임 수 (10프레임) |
 
 ### 프로퍼티
 
 | 프로퍼티 | 타입 | 설명 |
 |----------|------|------|
+| `IsCredentialPhase` | `bool` | Phase 1 (자격증명 입력) 표시 여부 |
+| `IsFaceVerifyPhase` | `bool` | Phase 2 (얼굴 인증) 표시 여부 |
 | `Username` | `string` | 사용자명 입력 |
-| `StatusMessage` | `string` | 상태 메시지 |
+| `Password` | `string` | 비밀번호 입력 |
+| `StatusMessage` | `string` | Phase 1 상태 메시지 |
+| `FaceStatusMessage` | `string` | Phase 2 얼굴 인증 상태 메시지 |
+| `CurrentFrame` | `BitmapSource?` | 웹캠 영상 프리뷰 |
+| `IsStatusError` | `bool` | 에러 상태 (메시지 색상 제어) |
 
 ### 커맨드
 
 | 커맨드 | 동작 |
 |--------|------|
-| `LoginCommand` | 스텁: "로그인 기능은 아직 구현되지 않았습니다." 표시 |
+| `LoginCommand` | Phase 1: 자격증명 검증 → 성공 시 Phase 2 시작 (웹캠 + 얼굴 인증) |
+| `CancelFaceVerifyCommand` | Phase 2 취소 → Phase 1로 복귀 |
+| `NavigateToSignUpCommand` | 회원가입 페이지로 이동 |
+
+### 얼굴 인증 동작
+
+```
+Login() 호출
+  → UserService.ValidateCredentials() → 실패 시 에러 메시지
+  → 성공 시: 저장된 얼굴 이미지 로드 (Cv2.ImRead)
+  → FaceService.GetFaceEmbedding() → 저장된 임베딩 추출
+  → Phase 2 시작 → 웹캠 시작
+
+OnFrameCaptured() (매 프레임)
+  → FaceService.DetectFace() → 얼굴 영역 탐지
+  → 얼굴 크롭 (20% 마진) → FaceService.GetFaceEmbedding()
+  → FaceService.CompareFaces() → 코사인 유사도 계산
+  → 유사도 >= 80%: _consecutiveMatchCount++
+    → 연속 매칭 달성 시: "얼굴인식에 성공하였습니다. (XX%)"
+    → MainViewModel.OnLoginSuccess() 호출
+  → 유사도 < 80%: 카운트 리셋 → "일치하지 않습니다. (XX%)"
+```
 
 ---
 
@@ -573,7 +644,196 @@ ONNX InferenceSession을 해제합니다.
 
 ---
 
-## 17. Python 스크립트
+## 17. UserData 클래스
+
+**네임스페이스:** `EggClassifier.Models`
+**파일:** `Models/UserData.cs`
+**역할:** 사용자 데이터 DTO 및 사용자 저장소 컨테이너
+
+### UserData 프로퍼티
+
+| 프로퍼티 | 타입 | 설명 |
+|----------|------|------|
+| `Username` | `string` | 사용자 아이디 |
+| `PasswordHash` | `string` | SHA256 해싱된 비밀번호 |
+| `PasswordSalt` | `string` | 비밀번호 해싱용 Salt |
+| `FaceImagePath` | `string` | 등록된 얼굴 이미지 파일 경로 |
+
+### UserStore 클래스
+
+| 프로퍼티 | 타입 | 설명 |
+|----------|------|------|
+| `Users` | `List<UserData>` | 등록된 사용자 목록 |
+
+---
+
+## 18. FaceEmbedder 클래스
+
+**네임스페이스:** `EggClassifier.Models`
+**파일:** `Models/FaceEmbedder.cs`
+**인터페이스:** `IDisposable`
+**역할:** MobileFaceNet ONNX 모델을 사용한 얼굴 임베딩 추출 엔진
+
+### 메서드
+
+#### `bool LoadModel(string modelPath)`
+
+MobileFaceNet ONNX 모델을 로드합니다.
+
+| 항목 | 내용 |
+|------|------|
+| **동작** | SessionOptions 생성 → CUDA 시도 → CPU 폴백 → 모델 메타데이터에서 입력 크기/임베딩 차원 자동 추출 |
+
+#### `float[]? GetEmbedding(Mat faceImage)`
+
+얼굴 이미지에서 임베딩 벡터를 추출합니다.
+
+| 항목 | 내용 |
+|------|------|
+| **입력** | BGR Mat (얼굴 크롭 이미지) |
+| **출력** | L2 정규화된 임베딩 벡터 (일반적으로 128차원) |
+| **전처리** | 112x112 리사이즈 → BGR→RGB → (-1~1) 정규화 → NCHW 텐서 |
+
+#### `static float CosineSimilarity(float[] a, float[] b)`
+
+두 임베딩 벡터의 코사인 유사도를 계산합니다.
+
+| 항목 | 내용 |
+|------|------|
+| **반환값** | `float` (0.0~1.0) — 1에 가까울수록 같은 인물 |
+
+---
+
+## 19. IFaceService 인터페이스
+
+**네임스페이스:** `EggClassifier.Services`
+**파일:** `Services/IFaceService.cs`
+**역할:** 얼굴 탐지 + 임베딩 서비스 인터페이스
+
+### 멤버
+
+| 멤버 | 타입 | 설명 |
+|------|------|------|
+| `IsLoaded` | `bool` | 모델 로드 여부 |
+| `LoadModels()` | `void` | Haar Cascade + MobileFaceNet 로드 |
+| `DetectFace(Mat)` | `Rect?` | 가장 큰 얼굴 영역 반환 |
+| `GetFaceEmbedding(Mat)` | `float[]?` | 얼굴 임베딩 추출 |
+| `CompareFaces(float[], float[])` | `float` | 코사인 유사도 |
+
+---
+
+## 20. FaceService 클래스
+
+**네임스페이스:** `EggClassifier.Services`
+**파일:** `Services/FaceService.cs`
+**인터페이스:** `IFaceService`
+**역할:** Haar Cascade (얼굴 탐지) + FaceEmbedder (임베딩) 래핑
+
+### 얼굴 탐지 동작
+
+```
+DetectFace(frame)
+  → Grayscale 변환 → EqualizeHist → DetectMultiScale
+  → 가장 큰 얼굴 Rect 반환 (없으면 null)
+```
+
+### 모델 검색 경로
+
+`haarcascade_frontalface_default.xml`과 `mobilefacenet.onnx`를 다음 경로에서 검색:
+1. 실행 디렉토리
+2. `Models/` 하위 폴더
+3. `../../../../models/` (demo/models/ 폴더)
+
+---
+
+## 21. IUserService 인터페이스
+
+**네임스페이스:** `EggClassifier.Services`
+**파일:** `Services/IUserService.cs`
+**역할:** 사용자 CRUD 인터페이스
+
+### 멤버
+
+| 멤버 | 타입 | 설명 |
+|------|------|------|
+| `UserExists(string)` | `bool` | 사용자 존재 여부 |
+| `RegisterUser(string, string, string, string = "USER")` | `bool` | 회원가입 (username, password, faceImagePath, role) |
+| `ValidateCredentials(string, string)` | `UserData?` | 자격증명 검증 → 성공 시 UserData 반환 |
+
+---
+
+## 22. UserService 클래스 (레거시)
+
+**네임스페이스:** `EggClassifier.Services`
+**파일:** `Services/UserService.cs`
+**인터페이스:** `IUserService`
+**역할:** JSON 파일 기반 사용자 저장소 (현재 사용하지 않음, SupabaseUserService로 대체됨)
+
+### 동작 원리
+
+- 저장 위치: `userdata/users.json`
+- 비밀번호 해싱: SHA256 + 랜덤 Salt (16바이트)
+- 회원가입 시 UserData 객체를 JSON 파일에 append
+
+---
+
+## 23. SignUpViewModel 클래스
+
+**네임스페이스:** `EggClassifier.Features.Login`
+**파일:** `Features/Login/SignUpViewModel.cs`
+**부모 클래스:** `ViewModelBase`
+**인터페이스:** `IDisposable`
+**역할:** 회원가입 페이지 (아이디/비밀번호 + 얼굴 이미지 촬영)
+
+### 생성자
+
+| 매개변수 | 타입 | 설명 |
+|----------|------|------|
+| `navigation` | `INavigationService` | DI에서 주입 |
+| `webcamService` | `IWebcamService` | DI에서 주입 (얼굴 촬영용) |
+| `userService` | `IUserService` | DI에서 주입 (회원가입 처리) |
+
+### 프로퍼티
+
+| 프로퍼티 | 타입 | 설명 |
+|----------|------|------|
+| `Username` | `string` | 아이디 입력 |
+| `Password` | `string` | 비밀번호 입력 |
+| `PasswordConfirm` | `string` | 비밀번호 확인 입력 |
+| `PasswordMatchMessage` | `string` | 비밀번호 일치/불일치 메시지 |
+| `IsPasswordMatch` | `bool` | 비밀번호 일치 여부 (메시지 색상 제어) |
+| `IsWebcamActive` | `bool` | 웹캠 활성화 상태 |
+| `IsFaceCaptured` | `bool` | 얼굴 촬영 완료 여부 |
+| `ShowStartButton` | `bool` | "얼굴 등록" 버튼 표시 여부 |
+| `CurrentFrame` | `BitmapSource?` | 웹캠 영상 프리뷰 |
+| `FaceThumbnail` | `BitmapSource?` | 촬영된 얼굴 사진 미리보기 |
+| `FaceStatusMessage` | `string` | 얼굴 등록 상태 메시지 |
+| `StatusMessage` | `string` | 전체 상태 메시지 |
+
+### 커맨드
+
+| 커맨드 | 동작 |
+|--------|------|
+| `StartFaceCaptureCommand` | 웹캠 시작 + 실시간 얼굴 탐지 미리보기 |
+| `CaptureFaceCommand` | 현재 프레임에서 얼굴 크롭 + 썸네일 표시 |
+| `ConfirmFaceCommand` | 촬영된 사진 확인 + 웹캠 중지 |
+| `RetakeFaceCommand` | 촬영 취소 + 웹캠 재시작 |
+| `RegisterCommand` | 유효성 검사 + 얼굴 이미지 PNG 저장 + 회원가입 |
+| `NavigateToLoginCommand` | 로그인 페이지로 이동 |
+
+### 회원가입 동작
+
+```
+Register() 호출
+  → 아이디/비밀번호/비밀번호확인/얼굴 유효성 검사
+  → 얼굴 이미지 저장: userdata/faces/{username}_{timestamp}.png (Cv2.ImWrite)
+  → UserService.RegisterUser(username, password, imagePath)
+  → 성공 시 로그인 페이지로 이동
+```
+
+---
+
+## 24. Python 스크립트
 
 ### 17.1 run_train.py — 모델 학습
 
@@ -653,5 +913,228 @@ ONNX InferenceSession을 해제합니다.
 | ViewModel | View | 설명 |
 |-----------|------|------|
 | `DetectionViewModel` | `DetectionView` | 계란 분류 페이지 |
-| `LoginViewModel` | `LoginView` | 로그인 페이지 |
+| `LoginViewModel` | `LoginView` | 로그인 페이지 (2단계 인증) |
+| `SignUpViewModel` | `SignUpView` | 회원가입 페이지 |
 | `DashboardViewModel` | `DashboardView` | 대시보드 페이지 |
+
+---
+
+## 23. SupabaseService 클래스
+
+**네임스페이스:** `EggClassifier.Services`
+**파일:** `Services/SupabaseService.cs`
+**역할:** Supabase 클라이언트 초기화 및 관리 (Singleton)
+
+### 주요 메서드
+
+#### `Task<Client> GetClientAsync()`
+
+Supabase 클라이언트를 초기화하고 반환합니다.
+
+| 항목 | 내용 |
+|------|------|
+| **반환값** | `Supabase.Client` — Supabase API 클라이언트 |
+| **동작** | 1) `appsettings.json`에서 URL과 Key 로드<br>2) `Supabase.Client` 초기화 (최초 1회)<br>3) 이후 호출 시 캐시된 클라이언트 반환 |
+| **예외** | `FileNotFoundException` — appsettings.json 없음<br>`InvalidOperationException` — URL 또는 Key 미설정 |
+
+```csharp
+// 사용 예시
+var client = await _supabaseService.GetClientAsync();
+var users = await client.From<UserEntity>().Get();
+```
+
+---
+
+## 24. SupabaseUserService 클래스
+
+**네임스페이스:** `EggClassifier.Services`
+**파일:** `Services/SupabaseUserService.cs`
+**인터페이스:** `IUserService`
+**역할:** Supabase 기반 사용자 관리 (회원가입, 로그인, 얼굴 임베딩 저장)
+
+### 생성자
+
+```csharp
+public SupabaseUserService(SupabaseService supabaseService, IFaceService faceService)
+```
+
+### 메서드
+
+#### `bool UserExists(string username)`
+
+사용자 존재 여부를 확인합니다.
+
+| 항목 | 내용 |
+|------|------|
+| **매개변수** | `username` — 사용자 아이디 |
+| **반환값** | `true` = 존재, `false` = 없음 |
+| **동작** | Supabase users 테이블에서 user_id 조회 |
+
+#### `bool RegisterUser(string username, string password, string faceImagePath, string role = "USER")`
+
+사용자를 회원가입시킵니다.
+
+| 항목 | 내용 |
+|------|------|
+| **매개변수** | `username` — 사용자 아이디<br>`password` — 평문 비밀번호<br>`faceImagePath` — 얼굴 이미지 파일 경로<br>`role` — 사용자 역할 ("USER" 또는 "ADMIN", 기본값: "USER") |
+| **반환값** | `true` = 성공, `false` = 실패 (중복 또는 오류) |
+| **동작** | 1) 중복 체크<br>2) 얼굴 이미지 → 임베딩 추출 (128차원)<br>3) 비밀번호 해싱 (SHA256+Salt)<br>4) Supabase users 테이블에 INSERT (선택한 role 포함) |
+
+#### `UserData? ValidateCredentials(string username, string password)`
+
+로그인 자격증명을 검증합니다.
+
+| 항목 | 내용 |
+|------|------|
+| **매개변수** | `username` — 사용자 아이디<br>`password` — 평문 비밀번호 |
+| **반환값** | `UserData` (성공) 또는 `null` (실패) |
+| **동작** | 1) Supabase users 테이블에서 조회<br>2) 비밀번호 검증 (hash:salt 분리)<br>3) UserData 반환 (FaceEmbedding 포함) |
+
+```csharp
+// 사용 예시
+var userData = _userService.ValidateCredentials("user123", "password");
+if (userData != null && userData.FaceEmbedding != null) {
+    // 로그인 성공, 얼굴 인증 진행
+}
+```
+
+---
+
+## 25. IInspectionService 인터페이스
+
+**네임스페이스:** `EggClassifier.Services`
+**파일:** `Services/IInspectionService.cs`
+**역할:** 계란 검사 로그 저장 및 통계 조회
+
+### 메서드
+
+#### `Task<bool> SaveInspectionAsync(string userId, int eggClass, double accuracy, Mat eggImage)`
+
+검사 결과를 DB에 저장합니다.
+
+| 항목 | 내용 |
+|------|------|
+| **매개변수** | `userId` — 사용자 ID<br>`eggClass` — 계란 클래스 (0: 정상, 1: 크랙, 2: 이물질, 3: 탈색, 4: 외형이상)<br>`accuracy` — 정확도 (0~1)<br>`eggImage` — 계란 이미지 (Mat) |
+| **반환값** | `true` = 성공, `false` = 실패 |
+
+#### `Task<int> GetInspectionCountAsync(string userId)`
+
+사용자별 검사 로그 개수를 조회합니다.
+
+| 항목 | 내용 |
+|------|------|
+| **매개변수** | `userId` — 사용자 ID |
+| **반환값** | 검사 횟수 (int) |
+
+#### `Task<(int normal, int defect)> GetInspectionStatsAsync(string userId)`
+
+사용자별 정상/불량 개수를 조회합니다.
+
+| 항목 | 내용 |
+|------|------|
+| **매개변수** | `userId` — 사용자 ID |
+| **반환값** | `(normal, defect)` 튜플 |
+
+---
+
+## 26. InspectionService 클래스
+
+**네임스페이스:** `EggClassifier.Services`
+**파일:** `Services/InspectionService.cs`
+**인터페이스:** `IInspectionService`
+**역할:** Supabase 기반 검사 로그 저장 및 통계 조회
+
+### 생성자
+
+```csharp
+public InspectionService(SupabaseService supabaseService)
+```
+
+### 메서드 동작
+
+#### `SaveInspectionAsync`
+
+1. Mat 이미지 → byte[] 변환 (`eggImage.ToBytes(".png")`)
+2. EggEntity 생성 (userId, eggClass, accuracy, imageBytes)
+3. Supabase egg 테이블에 INSERT
+
+#### `GetInspectionCountAsync`
+
+1. Supabase egg 테이블에서 user_id 필터링
+2. 전체 개수 반환
+
+#### `GetInspectionStatsAsync`
+
+1. Supabase egg 테이블에서 user_id 필터링
+2. egg_class == 0 → normal
+3. egg_class > 0 → defect
+4. 튜플 반환
+
+```csharp
+// 사용 예시
+await _inspectionService.SaveInspectionAsync(
+    userId: "user123",
+    eggClass: 1,  // 크랙
+    accuracy: 0.95,
+    eggImage: frame
+);
+
+var stats = await _inspectionService.GetInspectionStatsAsync("user123");
+Console.WriteLine($"정상: {stats.normal}, 불량: {stats.defect}");
+```
+
+---
+
+## 27. UserEntity 클래스
+
+**네임스페이스:** `EggClassifier.Models.Database`
+**파일:** `Models/Database/UserEntity.cs`
+**역할:** Supabase users 테이블 엔티티 (Postgrest 매핑)
+
+### 프로퍼티
+
+| 프로퍼티 | 타입 | DB 컬럼 | 설명 |
+|----------|------|---------|------|
+| `Idx` | `int` | `idx` (PK) | 자동 증가 기본키 |
+| `UserId` | `string` | `user_id` (UNIQUE) | 사용자 아이디 |
+| `UserPassword` | `string` | `user_password` | 비밀번호 (형식: "hash:salt") |
+| `UserName` | `string?` | `user_name` | 사용자 이름 (선택) |
+| `UserFace` | `float[]` | `user_face` | 얼굴 임베딩 벡터 (128차원) |
+| `UserRole` | `string?` | `user_role` | 역할 (기본값: "user") |
+
+### 어트리뷰트
+
+- `[Table("users")]` — PostgreSQL 테이블명 매핑
+- `[PrimaryKey("idx", false)]` — 기본키 지정 (자동 증가 아님)
+- `[Column("컬럼명")]` — 컬럼명 매핑
+
+---
+
+## 28. EggEntity 클래스
+
+**네임스페이스:** `EggClassifier.Models.Database`
+**파일:** `Models/Database/EggEntity.cs`
+**역할:** Supabase egg 테이블 엔티티 (Postgrest 매핑)
+
+### 프로퍼티
+
+| 프로퍼티 | 타입 | DB 컬럼 | 설명 |
+|----------|------|---------|------|
+| `Idx` | `int` | `idx` (PK) | 자동 증가 기본키 |
+| `UserId` | `string` | `user_id` (FK) | 검사를 수행한 사용자 ID |
+| `EggClass` | `int` | `egg_class` | 계란 클래스 (0~4) |
+| `Accuracy` | `double` | `accuracy` | 분류 정확도 (0~1) |
+| `InspectDate` | `DateTime` | `inspect_date` | 검사 날짜/시간 |
+| `EggImage` | `byte[]` | `egg_image` | 계란 이미지 (PNG 바이트) |
+
+### 어트리뷰트
+
+- `[Table("egg")]` — PostgreSQL 테이블명 매핑
+- `[PrimaryKey("idx", false)]` — 기본키 지정
+- `[Column("컬럼명")]` — 컬럼명 매핑
+
+---
+
+## 추가 문서
+
+Supabase 백엔드 연동에 대한 자세한 내용은 [SUPABASE_BACKEND.md](SUPABASE_BACKEND.md)를 참고하세요.

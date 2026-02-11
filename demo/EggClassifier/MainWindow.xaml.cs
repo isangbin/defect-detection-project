@@ -12,7 +12,7 @@ namespace EggClassifier
 
             Loaded += (s, e) =>
             {
-                viewModel.NavigateToDetectionCommand.Execute(null);
+                viewModel.NavigateToLoginCommand.Execute(null);
             };
         }
     }

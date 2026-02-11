@@ -38,7 +38,7 @@ namespace EggClassifier.Services
         public int CameraIndex { get; set; } = 0;
         public int FrameWidth { get; set; } = 640;
         public int FrameHeight { get; set; } = 480;
-        public int TargetFps { get; set; } = 30;
+        public int TargetFps { get; set; } =20;
 
         /// <summary>
         /// 웹캠 캡처 시작

@@ -8,10 +8,13 @@ AI Hub 계란 데이터셋으로 학습된 YOLOv8 객체 탐지 모델을 활용
 | 항목 | 내용 |
 |------|------|
 | 플랫폼 | Windows (WPF, .NET 8.0) |
-| AI 모델 | YOLOv8n (Ultralytics) → ONNX 변환 |
+| 백엔드 | Supabase (PostgreSQL) |
+| AI 모델 (계란) | YOLOv8n (Ultralytics) → ONNX 변환 |
+| AI 모델 (얼굴) | Haar Cascade (탐지) + MobileFaceNet ONNX (임베딩) |
 | 추론 엔진 | Microsoft.ML.OnnxRuntime |
 | 영상 처리 | OpenCvSharp4 |
 | UI 패턴 | MVVM (CommunityToolkit.Mvvm) |
+| 인증 | 아이디/비밀번호 + 얼굴인식 2차 인증 |
 | 학습 성능 | mAP50-95: 93.3% (40 에포크) |
 
 ---
@@ -43,28 +46,44 @@ EggClassifier/
 │   ├── Detection.cs                # 탐지 결과 DTO
 │   ├── ClassCountItem.cs           # 클래스별 카운트 표시용
 │   ├── DetectionItem.cs            # 현재 탐지 표시용
-│   ├── YoloDetector.cs             # ONNX 추론 엔진
+│   ├── YoloDetector.cs             # ONNX 추론 엔진 (계란 분류)
+│   ├── FaceEmbedder.cs             # ONNX 얼굴 임베딩 추론 엔진
+│   ├── UserData.cs                 # 사용자 데이터 DTO + UserStore
+│   ├── Database/                   # Supabase 엔티티
+│   │   ├── UserEntity.cs           # users 테이블 엔티티
+│   │   └── EggEntity.cs            # egg 테이블 엔티티
 │   └── egg_classifier.onnx         # 학습된 ONNX 모델 파일
 ├── Services/
 │   ├── IWebcamService.cs           # 웹캠 서비스 인터페이스
 │   ├── WebcamService.cs            # 웹캠 캡처 구현
 │   ├── IDetectorService.cs         # 탐지 서비스 인터페이스
-│   └── DetectorService.cs          # YoloDetector 래핑 서비스
+│   ├── DetectorService.cs          # YoloDetector 래핑 서비스
+│   ├── IFaceService.cs             # 얼굴 탐지/임베딩 서비스 인터페이스
+│   ├── FaceService.cs              # Haar Cascade + FaceEmbedder 래핑
+│   ├── IUserService.cs             # 사용자 CRUD 서비스 인터페이스
+│   ├── UserService.cs              # (레거시) JSON 파일 기반 사용자 저장소
+│   ├── SupabaseService.cs          # Supabase 클라이언트 관리
+│   ├── SupabaseUserService.cs      # Supabase 기반 사용자 관리 (현재 사용 중)
+│   ├── IInspectionService.cs       # 검사 로그 서비스 인터페이스
+│   └── InspectionService.cs        # Supabase 기반 검사 로그 저장
 ├── Features/
 │   ├── Detection/                  # 팀원A: 계란 분류
 │   │   ├── DetectionView.xaml
 │   │   ├── DetectionView.xaml.cs
 │   │   └── DetectionViewModel.cs
-│   ├── Login/                      # 팀원B: 로그인
-│   │   ├── LoginView.xaml
+│   ├── Login/                      # 팀원B: 로그인 + 회원가입
+│   │   ├── LoginView.xaml          # 2단계 로그인 UI (자격증명 → 얼굴인증)
 │   │   ├── LoginView.xaml.cs
-│   │   └── LoginViewModel.cs
+│   │   ├── LoginViewModel.cs       # 2단계 로그인 로직 (비밀번호 + 얼굴 2FA)
+│   │   ├── SignUpView.xaml          # 회원가입 UI (폼 + 웹캠 얼굴 촬영)
+│   │   ├── SignUpView.xaml.cs
+│   │   └── SignUpViewModel.cs       # 회원가입 로직 (얼굴 이미지 저장)
 │   └── Dashboard/                  # 팀원C: DB 시각화
 │       ├── DashboardView.xaml
 │       ├── DashboardView.xaml.cs
 │       └── DashboardViewModel.cs
 ├── ViewModels/
-│   └── MainViewModel.cs            # 네비게이션 전용 (~57줄)
+│   └── MainViewModel.cs            # 네비게이션 + 로그인 상태 관리
 └── docs/
     ├── PROJECT_STRUCTURE.md         # 프로젝트 구조 상세 가이드
     ├── GUIDELINES.md
@@ -83,7 +102,22 @@ EggClassifier/
 - 웹캠 (USB 또는 내장)
 - (선택) NVIDIA GPU + CUDA 12.x (GPU 추론 시)
 
-### 2. 빌드 및 실행
+### 2. Supabase 설정
+
+`appsettings.json` 파일에 Supabase 연결 정보를 입력하세요:
+
+```json
+{
+  "Supabase": {
+    "Url": "https://your-project-id.supabase.co",
+    "Key": "your-anon-public-key"
+  }
+}
+```
+
+> Supabase 프로젝트 생성 및 스키마 설정은 [SUPABASE_BACKEND.md](docs/SUPABASE_BACKEND.md)를 참고하세요.
+
+### 3. 빌드 및 실행
 
 ```bash
 # 프로젝트 폴더로 이동
@@ -99,13 +133,24 @@ dotnet build
 dotnet run
 ```
 
-### 3. 사용 방법
+### 4. 얼굴인식 모델 다운로드
 
-1. 앱 실행 → 좌측 사이드바에서 "계란 분류" 선택 (기본)
-2. 우측 패널에서 모델 상태 확인 (녹색 = 로드됨)
-3. **[시작]** 버튼 → 웹캠 활성화 → 실시간 분류
-4. 사이드바에서 "로그인", "대시보드" 전환 가능
-5. 페이지 전환 시 웹캠 자동 정지/재시작
+```bash
+cd training
+python download_face_models.py
+```
+
+> `models/` 폴더에 `haarcascade_frontalface_default.xml`과 `mobilefacenet.onnx`가 생성됩니다.
+
+### 5. 사용 방법
+
+1. 앱 실행 → **로그인 페이지** 표시 (시작 페이지)
+2. 회원가입: "회원가입" 클릭 → 아이디/비밀번호 입력 + 얼굴 촬영 → "가입하기"
+3. 로그인 1단계: 아이디 + 비밀번호 입력 → "로그인" 클릭
+4. 로그인 2단계: 웹캠 자동 시작 → 얼굴 인증 (80% 유사도, 연속 프레임 매칭)
+5. 인증 성공 → 좌측 사이드바 표시 → "계란 분류" 페이지로 자동 이동
+6. **[시작]** 버튼 → 웹캠 활성화 → 실시간 분류
+7. 사이드바에서 "대시보드" 전환 가능, "로그아웃" 시 로그인 페이지로 복귀
 
 ---
 
@@ -129,6 +174,48 @@ dotnet run
 [화면 표시]                 Features/Detection/DetectionView.xaml
   (웹캠 영상 + 탐지 결과 패널)
 ```
+
+---
+
+## 로그인 + 얼굴인식 2차 인증 워크플로우
+
+### 회원가입
+
+```
+[회원가입 페이지]
+  → 아이디/비밀번호/비밀번호확인 입력
+  → 역할 선택 (USER 또는 ADMIN)
+  → "얼굴 등록" 클릭 → 웹캠 시작 + 얼굴 탐지 미리보기
+  → "촬영" 클릭 → 얼굴 사진 표시
+  → "확인" 또는 "재촬영" 선택
+  → "가입하기" 클릭
+  → 얼굴 이미지에서 임베딩 추출 (MobileFaceNet)
+  → Supabase users 테이블에 저장 (SHA256+Salt 해싱, 얼굴 임베딩 배열, 선택한 역할)
+  → 로그인 페이지로 이동
+```
+
+### 로그인 (2단계)
+
+```
+[1단계: 자격증명]
+  → 아이디 + 비밀번호 입력 → "로그인" 클릭
+  → Supabase users 테이블 조회 → 자격증명 검증 (SHA256+Salt)
+
+[2단계: 얼굴 인증]
+  → DB에서 저장된 얼굴 임베딩 로드 (128차원 벡터)
+  → 웹캠 자동 시작 → 실시간 얼굴 탐지 (Haar Cascade)
+  → 얼굴 크롭 → 임베딩 추출 (MobileFaceNet) → 코사인 유사도 비교
+  → 유사도 >= 80%, 연속 10프레임 매칭 → 로그인 성공
+  → 계란 분류 페이지로 자동 이동
+```
+
+### 얼굴인식 AI 모델
+
+| 용도 | 모델 | 크기 | 입출력 |
+|------|------|------|--------|
+| 얼굴 탐지 | OpenCV Haar Cascade | ~930KB | 이미지 → 얼굴 좌표(Rect) |
+| 얼굴 임베딩 | MobileFaceNet ONNX | ~5MB | 112x112 RGB → 128차원 벡터 |
+| 얼굴 비교 | 코사인 유사도 (코드 구현) | - | 두 임베딩 벡터 → 유사도 0~1 |
 
 ---
 
@@ -176,7 +263,11 @@ dotnet run
 | UI | WPF | - | 데스크톱 UI |
 | MVVM | CommunityToolkit.Mvvm | 8.2.2 | 데이터 바인딩 |
 | DI 컨테이너 | Microsoft.Extensions.DependencyInjection | 8.0.1 | 의존성 주입 |
-| AI 추론 | Microsoft.ML.OnnxRuntime | 1.16.3 | ONNX 모델 실행 |
+| 백엔드 | Supabase (PostgreSQL) | - | 사용자 관리 + 검사 로그 저장 |
+| Supabase SDK | supabase-csharp | 0.16.2 | Supabase API 클라이언트 |
+| AI 추론 | Microsoft.ML.OnnxRuntime | 1.16.3 | ONNX 모델 실행 (계란 분류 + 얼굴 임베딩) |
+| 얼굴 탐지 | OpenCV Haar Cascade | - | 얼굴 영역 탐지 |
+| 얼굴 임베딩 | MobileFaceNet (ONNX) | - | 얼굴 특징 벡터 추출 |
 | 영상처리 | OpenCvSharp4 | 4.9.0 | 웹캠, 이미지 처리 |
 | 학습 | Ultralytics YOLOv8 | 8.4.11 | 모델 학습 (Python) |
 | GPU | CUDA | 12.4 | GPU 가속 |
@@ -210,6 +301,7 @@ dotnet run
 
 ## 상세 문서
 
+- [Supabase 백엔드 연동 가이드 (SUPABASE_BACKEND.md)](docs/SUPABASE_BACKEND.md)
 - [프로젝트 구조 가이드 (PROJECT_STRUCTURE.md)](docs/PROJECT_STRUCTURE.md)
 - [개발 가이드라인 (GUIDELINES.md)](docs/GUIDELINES.md)
 - [코드 라인별 해설 (CODE_REFERENCE.md)](docs/CODE_REFERENCE.md)

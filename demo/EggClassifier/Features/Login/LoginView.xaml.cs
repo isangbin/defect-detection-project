@@ -8,5 +8,13 @@ namespace EggClassifier.Features.Login
         {
             InitializeComponent();
         }
+
+        private void PasswordBox_PasswordChanged(object sender, System.Windows.RoutedEventArgs e)
+        {
+            if (DataContext is LoginViewModel vm)
+            {
+                vm.Password = PasswordBox.Password;
+            }
+        }
     }
 }
