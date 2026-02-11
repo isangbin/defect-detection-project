@@ -25,7 +25,11 @@ namespace EggClassifier
             services.AddSingleton<IWebcamService, WebcamService>();
             services.AddSingleton<IDetectorService, DetectorService>();
             services.AddSingleton<IFaceService, FaceService>();
-            services.AddSingleton<IUserService, UserService>();
+
+            // Supabase Services
+            services.AddSingleton<SupabaseService>();
+            services.AddSingleton<IUserService, SupabaseUserService>();
+            services.AddSingleton<IInspectionService, InspectionService>();
 
             // ViewModels
             services.AddSingleton<MainViewModel>();

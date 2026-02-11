@@ -1,3 +1,12 @@
+// =====================================================================
+// LEGACY: JSON 파일 기반 사용자 관리 서비스 (더 이상 사용하지 않음)
+// 현재는 SupabaseUserService를 사용합니다.
+// 향후 Supabase에서 JSON 파일 방식으로 되돌릴 경우를 대비하여 보관
+// 사용하려면 App.xaml.cs에서 DI 등록 변경:
+//   services.AddSingleton<IUserService, UserService>();
+// =====================================================================
+
+/*
 using EggClassifier.Models;
 using System;
 using System.IO;
@@ -101,3 +110,4 @@ namespace EggClassifier.Services
         }
     }
 }
+*/

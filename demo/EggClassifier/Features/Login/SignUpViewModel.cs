@@ -58,6 +58,9 @@ namespace EggClassifier.Features.Login
         [ObservableProperty]
         private string _faceStatusMessage = string.Empty;
 
+        [ObservableProperty]
+        private string _selectedRole = "USER";
+
         partial void OnPasswordChanged(string value) => CheckPasswordMatch();
         partial void OnPasswordConfirmChanged(string value) => CheckPasswordMatch();
 
@@ -206,7 +209,7 @@ namespace EggClassifier.Features.Login
         }
 
         [RelayCommand]
-        private void Register()
+        private async Task Register()
         {
             if (string.IsNullOrWhiteSpace(Username))
             {
@@ -236,21 +239,44 @@ namespace EggClassifier.Features.Login
                 return;
             }
 
-            if (_userService.UserExists(Username))
+            // UI 업데이트
+            StatusMessage = "회원가입 처리 중...";
+            IsStatusError = false;
+
+            // 백그라운드 스레드에서 실행
+            var username = Username;
+            var password = Password;
+            var role = SelectedRole;
+            var faceMat = _capturedFaceMat.Clone();
+
+            bool success = await Task.Run(() =>
             {
-                StatusMessage = "이미 존재하는 아이디입니다.";
-                IsStatusError = true;
-                return;
-            }
+                try
+                {
+                    if (_userService.UserExists(username))
+                    {
+                        return false;
+                    }
 
-            // 얼굴 이미지 파일 저장
-            string faceDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "userdata", "faces");
-            Directory.CreateDirectory(faceDir);
-            string fileName = $"{Username}_{DateTime.Now:yyyyMMddHHmmss}.png";
-            string faceImagePath = Path.Combine(faceDir, fileName);
-            Cv2.ImWrite(faceImagePath, _capturedFaceMat);
+                    // 얼굴 이미지 파일 저장
+                    string faceDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "userdata", "faces");
+                    Directory.CreateDirectory(faceDir);
+                    string fileName = $"{username}_{DateTime.Now:yyyyMMddHHmmss}.png";
+                    string faceImagePath = Path.Combine(faceDir, fileName);
+                    Cv2.ImWrite(faceImagePath, faceMat);
 
-            if (_userService.RegisterUser(Username, Password, faceImagePath))
+                    var result = _userService.RegisterUser(username, password, faceImagePath, role);
+                    faceMat.Dispose();
+                    return result;
+                }
+                catch
+                {
+                    faceMat.Dispose();
+                    return false;
+                }
+            });
+
+            if (success)
             {
                 StatusMessage = "회원가입이 완료되었습니다!";
                 IsStatusError = false;
@@ -260,7 +286,7 @@ namespace EggClassifier.Features.Login
             }
             else
             {
-                StatusMessage = "회원가입에 실패했습니다.";
+                StatusMessage = "회원가입에 실패했습니다. (중복 아이디 또는 오류)";
                 IsStatusError = true;
             }
         }

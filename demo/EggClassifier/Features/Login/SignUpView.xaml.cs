@@ -24,5 +24,13 @@ namespace EggClassifier.Features.Login
                 vm.PasswordConfirm = PasswordConfirmBox.Password;
             }
         }
+
+        private void RoleRadioButton_Checked(object sender, System.Windows.RoutedEventArgs e)
+        {
+            if (sender is RadioButton rb && DataContext is SignUpViewModel vm)
+            {
+                vm.SelectedRole = rb.Tag?.ToString() ?? "USER";
+            }
+        }
     }
 }

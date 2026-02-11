@@ -8,6 +8,7 @@ AI Hub 계란 데이터셋으로 학습된 YOLOv8 객체 탐지 모델을 활용
 | 항목 | 내용 |
 |------|------|
 | 플랫폼 | Windows (WPF, .NET 8.0) |
+| 백엔드 | Supabase (PostgreSQL) |
 | AI 모델 (계란) | YOLOv8n (Ultralytics) → ONNX 변환 |
 | AI 모델 (얼굴) | Haar Cascade (탐지) + MobileFaceNet ONNX (임베딩) |
 | 추론 엔진 | Microsoft.ML.OnnxRuntime |
@@ -48,6 +49,9 @@ EggClassifier/
 │   ├── YoloDetector.cs             # ONNX 추론 엔진 (계란 분류)
 │   ├── FaceEmbedder.cs             # ONNX 얼굴 임베딩 추론 엔진
 │   ├── UserData.cs                 # 사용자 데이터 DTO + UserStore
+│   ├── Database/                   # Supabase 엔티티
+│   │   ├── UserEntity.cs           # users 테이블 엔티티
+│   │   └── EggEntity.cs            # egg 테이블 엔티티
 │   └── egg_classifier.onnx         # 학습된 ONNX 모델 파일
 ├── Services/
 │   ├── IWebcamService.cs           # 웹캠 서비스 인터페이스
@@ -57,7 +61,11 @@ EggClassifier/
 │   ├── IFaceService.cs             # 얼굴 탐지/임베딩 서비스 인터페이스
 │   ├── FaceService.cs              # Haar Cascade + FaceEmbedder 래핑
 │   ├── IUserService.cs             # 사용자 CRUD 서비스 인터페이스
-│   └── UserService.cs              # JSON 파일 기반 사용자 저장소
+│   ├── UserService.cs              # (레거시) JSON 파일 기반 사용자 저장소
+│   ├── SupabaseService.cs          # Supabase 클라이언트 관리
+│   ├── SupabaseUserService.cs      # Supabase 기반 사용자 관리 (현재 사용 중)
+│   ├── IInspectionService.cs       # 검사 로그 서비스 인터페이스
+│   └── InspectionService.cs        # Supabase 기반 검사 로그 저장
 ├── Features/
 │   ├── Detection/                  # 팀원A: 계란 분류
 │   │   ├── DetectionView.xaml
@@ -94,7 +102,22 @@ EggClassifier/
 - 웹캠 (USB 또는 내장)
 - (선택) NVIDIA GPU + CUDA 12.x (GPU 추론 시)
 
-### 2. 빌드 및 실행
+### 2. Supabase 설정
+
+`appsettings.json` 파일에 Supabase 연결 정보를 입력하세요:
+
+```json
+{
+  "Supabase": {
+    "Url": "https://your-project-id.supabase.co",
+    "Key": "your-anon-public-key"
+  }
+}
+```
+
+> Supabase 프로젝트 생성 및 스키마 설정은 [SUPABASE_BACKEND.md](docs/SUPABASE_BACKEND.md)를 참고하세요.
+
+### 3. 빌드 및 실행
 
 ```bash
 # 프로젝트 폴더로 이동
@@ -110,7 +133,7 @@ dotnet build
 dotnet run
 ```
 
-### 3. 얼굴인식 모델 다운로드
+### 4. 얼굴인식 모델 다운로드
 
 ```bash
 cd training
@@ -119,7 +142,7 @@ python download_face_models.py
 
 > `models/` 폴더에 `haarcascade_frontalface_default.xml`과 `mobilefacenet.onnx`가 생성됩니다.
 
-### 4. 사용 방법
+### 5. 사용 방법
 
 1. 앱 실행 → **로그인 페이지** 표시 (시작 페이지)
 2. 회원가입: "회원가입" 클릭 → 아이디/비밀번호 입력 + 얼굴 촬영 → "가입하기"
@@ -161,12 +184,13 @@ python download_face_models.py
 ```
 [회원가입 페이지]
   → 아이디/비밀번호/비밀번호확인 입력
+  → 역할 선택 (USER 또는 ADMIN)
   → "얼굴 등록" 클릭 → 웹캠 시작 + 얼굴 탐지 미리보기
   → "촬영" 클릭 → 얼굴 사진 표시
   → "확인" 또는 "재촬영" 선택
   → "가입하기" 클릭
-  → userdata/faces/{username}_{timestamp}.png 이미지 저장
-  → userdata/users.json에 사용자 정보 저장 (SHA256+Salt 해싱)
+  → 얼굴 이미지에서 임베딩 추출 (MobileFaceNet)
+  → Supabase users 테이블에 저장 (SHA256+Salt 해싱, 얼굴 임베딩 배열, 선택한 역할)
   → 로그인 페이지로 이동
 ```
 
@@ -175,13 +199,13 @@ python download_face_models.py
 ```
 [1단계: 자격증명]
   → 아이디 + 비밀번호 입력 → "로그인" 클릭
-  → 자격증명 검증 (SHA256+Salt)
+  → Supabase users 테이블 조회 → 자격증명 검증 (SHA256+Salt)
 
 [2단계: 얼굴 인증]
-  → 저장된 얼굴 이미지 로드 → 임베딩 추출 (MobileFaceNet)
+  → DB에서 저장된 얼굴 임베딩 로드 (128차원 벡터)
   → 웹캠 자동 시작 → 실시간 얼굴 탐지 (Haar Cascade)
-  → 얼굴 크롭 → 임베딩 추출 → 코사인 유사도 비교
-  → 유사도 >= 80% 연속 매칭 → 로그인 성공
+  → 얼굴 크롭 → 임베딩 추출 (MobileFaceNet) → 코사인 유사도 비교
+  → 유사도 >= 80%, 연속 10프레임 매칭 → 로그인 성공
   → 계란 분류 페이지로 자동 이동
 ```
 
@@ -239,6 +263,8 @@ python download_face_models.py
 | UI | WPF | - | 데스크톱 UI |
 | MVVM | CommunityToolkit.Mvvm | 8.2.2 | 데이터 바인딩 |
 | DI 컨테이너 | Microsoft.Extensions.DependencyInjection | 8.0.1 | 의존성 주입 |
+| 백엔드 | Supabase (PostgreSQL) | - | 사용자 관리 + 검사 로그 저장 |
+| Supabase SDK | supabase-csharp | 0.16.2 | Supabase API 클라이언트 |
 | AI 추론 | Microsoft.ML.OnnxRuntime | 1.16.3 | ONNX 모델 실행 (계란 분류 + 얼굴 임베딩) |
 | 얼굴 탐지 | OpenCV Haar Cascade | - | 얼굴 영역 탐지 |
 | 얼굴 임베딩 | MobileFaceNet (ONNX) | - | 얼굴 특징 벡터 추출 |
@@ -275,6 +301,7 @@ python download_face_models.py
 
 ## 상세 문서
 
+- [Supabase 백엔드 연동 가이드 (SUPABASE_BACKEND.md)](docs/SUPABASE_BACKEND.md)
 - [프로젝트 구조 가이드 (PROJECT_STRUCTURE.md)](docs/PROJECT_STRUCTURE.md)
 - [개발 가이드라인 (GUIDELINES.md)](docs/GUIDELINES.md)
 - [코드 라인별 해설 (CODE_REFERENCE.md)](docs/CODE_REFERENCE.md)

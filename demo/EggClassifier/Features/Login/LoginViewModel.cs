@@ -24,7 +24,7 @@ namespace EggClassifier.Features.Login
         private UserData? _authenticatedUser;
         private float[]? _savedFaceEmbedding;
         private const float SIMILARITY_THRESHOLD = 0.8f;
-        private const int REQUIRED_CONSECUTIVE_FRAMES = 30;
+        private const int REQUIRED_CONSECUTIVE_FRAMES = 10;
         private int _consecutiveMatchCount;
 
         // Phase 1: 자격증명 입력
@@ -82,7 +82,7 @@ namespace EggClassifier.Features.Login
         }
 
         [RelayCommand]
-        private void Login()
+        private async Task Login()
         {
             if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
             {
@@ -91,7 +91,16 @@ namespace EggClassifier.Features.Login
                 return;
             }
 
-            var user = _userService.ValidateCredentials(Username, Password);
+            // UI 업데이트
+            StatusMessage = "로그인 중...";
+            IsStatusError = false;
+
+            // 백그라운드 스레드에서 실행
+            var username = Username;
+            var password = Password;
+
+            var user = await Task.Run(() => _userService.ValidateCredentials(username, password));
+
             if (user == null)
             {
                 StatusMessage = "아이디 또는 비밀번호가 올바르지 않습니다.";
@@ -109,26 +118,34 @@ namespace EggClassifier.Features.Login
                 return;
             }
 
-            // 저장된 얼굴 이미지에서 임베딩 추출
-            if (string.IsNullOrEmpty(user.FaceImagePath) || !File.Exists(user.FaceImagePath))
+            // 저장된 얼굴 임베딩 가져오기
+            // 1. DB에서 직접 임베딩을 가져온 경우 (Supabase)
+            if (user.FaceEmbedding != null && user.FaceEmbedding.Length > 0)
             {
-                StatusMessage = "등록된 얼굴 이미지를 찾을 수 없습니다.";
-                IsStatusError = true;
-                return;
+                _savedFaceEmbedding = user.FaceEmbedding;
             }
-
-            using var savedFaceImage = Cv2.ImRead(user.FaceImagePath);
-            if (savedFaceImage.Empty())
+            // 2. 파일 경로에서 이미지를 읽어서 임베딩 추출 (JSON 파일 방식)
+            else if (!string.IsNullOrEmpty(user.FaceImagePath) && File.Exists(user.FaceImagePath))
             {
-                StatusMessage = "얼굴 이미지를 읽을 수 없습니다.";
-                IsStatusError = true;
-                return;
+                using var savedFaceImage = Cv2.ImRead(user.FaceImagePath);
+                if (savedFaceImage.Empty())
+                {
+                    StatusMessage = "얼굴 이미지를 읽을 수 없습니다.";
+                    IsStatusError = true;
+                    return;
+                }
+
+                _savedFaceEmbedding = _faceService.GetFaceEmbedding(savedFaceImage);
+                if (_savedFaceEmbedding == null)
+                {
+                    StatusMessage = "저장된 얼굴에서 특징을 추출할 수 없습니다.";
+                    IsStatusError = true;
+                    return;
+                }
             }
-
-            _savedFaceEmbedding = _faceService.GetFaceEmbedding(savedFaceImage);
-            if (_savedFaceEmbedding == null)
+            else
             {
-                StatusMessage = "저장된 얼굴에서 특징을 추출할 수 없습니다.";
+                StatusMessage = "등록된 얼굴 정보를 찾을 수 없습니다.";
                 IsStatusError = true;
                 return;
             }
