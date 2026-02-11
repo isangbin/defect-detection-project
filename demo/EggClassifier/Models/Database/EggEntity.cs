@@ -26,4 +26,7 @@ public class EggEntity : BaseModel
 
     [Column("egg_image")]
     public byte[] EggImage { get; set; } = Array.Empty<byte>();
+
+    [Column("egg_image_url")]
+    public string? EggImageUrl { get; set; }
 }

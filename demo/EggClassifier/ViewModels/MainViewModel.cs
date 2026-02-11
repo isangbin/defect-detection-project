@@ -10,6 +10,7 @@ namespace EggClassifier.ViewModels
     public partial class MainViewModel : ObservableObject
     {
         private readonly INavigationService _navigation;
+        private string? _currentUserId;
 
         public INavigationService Navigation => _navigation;
 
@@ -30,8 +31,9 @@ namespace EggClassifier.ViewModels
             _navigation = navigationService;
         }
 
-        public void OnLoginSuccess()
+        public void OnLoginSuccess(string userId)
         {
+            _currentUserId = userId;
             IsLoggedIn = true;
             NavigateToDetection();
         }
@@ -44,6 +46,10 @@ namespace EggClassifier.ViewModels
             IsLoginSelected = false;
             IsDashboardSelected = false;
             _navigation.NavigateTo<DetectionViewModel>();
+            if (_navigation.CurrentView is DetectionViewModel detectionVm && !string.IsNullOrEmpty(_currentUserId))
+            {
+                detectionVm.SetCurrentUser(_currentUserId);
+            }
         }
 
         [RelayCommand]

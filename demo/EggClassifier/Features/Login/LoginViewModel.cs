@@ -114,7 +114,7 @@ namespace EggClassifier.Features.Login
             {
                 StatusMessage = "얼굴인식 모델이 없어 바로 로그인합니다.";
                 IsStatusError = false;
-                _mainViewModel.OnLoginSuccess();
+                _mainViewModel.OnLoginSuccess(username);
                 return;
             }
 
@@ -239,7 +239,7 @@ namespace EggClassifier.Features.Login
                                     {
                                         FaceStatusMessage = $"얼굴인식에 성공하였습니다. ({percent}%)";
                                         StopWebcam();
-                                        _mainViewModel.OnLoginSuccess();
+                                        _mainViewModel.OnLoginSuccess(_authenticatedUser?.Username ?? string.Empty);
                                     }
                                     else
                                     {
