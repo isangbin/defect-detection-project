@@ -308,14 +308,24 @@ def train_model(
         print(f"  Precision:   {metrics.get('metrics/precision(B)', 0):.4f}")
         print(f"  Recall:      {metrics.get('metrics/recall(B)', 0):.4f}")
 
+    # models 폴더로 best.pt 복사
+    models_dir = Path(__file__).parent.parent / 'models'
+    models_dir.mkdir(exist_ok=True)
+
+    final_model_path = models_dir / 'egg_classifier_best.pt'
+    if best_model.exists():
+        import shutil
+        shutil.copy2(best_model, final_model_path)
+        print(f"\n📁 모델 복사 완료: {final_model_path}")
+
     print("\n" + "=" * 60)
     print("💡 다음 단계:")
     print("  1. 학습 결과 확인: runs/detect/{}/".format(name))
-    print("  2. ONNX 내보내기: python export_onnx.py --model {}".format(best_model))
-    print("  3. 검증 실행: python train.py --validate-only {}".format(best_model))
+    print("  2. ONNX 내보내기: python export_onnx.py")
+    print("  3. 검증 실행: python train.py --validate-only ../models/egg_classifier_best.pt")
     print("=" * 60 + "\n")
 
-    return best_model
+    return final_model_path
 
 
 def validate_model(model_path: str, data_yaml: str):

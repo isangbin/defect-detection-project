@@ -115,7 +115,7 @@ def verify_onnx(onnx_path: str, imgsz: int = 640):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Export YOLOv8 model to ONNX')
-    parser.add_argument('--model', type=str, default='runs/detect/egg_classifier/weights/best.pt',
+    parser.add_argument('--model', type=str, default='../models/egg_classifier_best.pt',
                         help='Path to trained .pt model')
     parser.add_argument('--output', type=str, default='../models', help='Output directory')
     parser.add_argument('--imgsz', type=int, default=640, help='Input image size')
