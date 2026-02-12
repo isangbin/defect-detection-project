@@ -242,7 +242,7 @@ namespace EggClassifier.Features.Detection
                 var bitmapSource = frame.ToBitmapSource();
                 bitmapSource.Freeze();
 
-                Application.Current.Dispatcher.BeginInvoke(() =>
+                Application.Current?.Dispatcher?.BeginInvoke(() =>
                 {
                     CurrentFrame = bitmapSource;
                     FpsText = $"FPS: {e.Fps:F1}";
@@ -291,7 +291,7 @@ namespace EggClassifier.Features.Detection
 
         private void OnWebcamError(object? sender, string message)
         {
-            Application.Current.Dispatcher.Invoke(() =>
+            Application.Current?.Dispatcher?.Invoke(() =>
             {
                 MessageBox.Show(message, "웹캠 오류", MessageBoxButton.OK, MessageBoxImage.Error);
                 Stop();
