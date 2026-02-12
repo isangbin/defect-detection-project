@@ -160,7 +160,7 @@ namespace EggClassifier.Features.Dashboard
             }
             catch (Exception ex)
             {
-                // 이미지가 안 나오는 구체적인 이유를 확인합니다.
+                // 이미지가 안 나오는 구체적인 이유를 확인
                 LogMessage = $"이미지 변환 실패: {ex.Message}";
                 return null;
             }
