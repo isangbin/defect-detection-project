@@ -150,7 +150,7 @@ namespace EggClassifier.Features.Login
                     var thumbnail = frame.ToBitmapSource();
                     thumbnail.Freeze();
 
-                    Application.Current.Dispatcher.BeginInvoke(() =>
+                    Application.Current?.Dispatcher?.BeginInvoke(() =>
                     {
                         FaceThumbnail = thumbnail;
                         IsFaceCaptured = true;
@@ -166,7 +166,7 @@ namespace EggClassifier.Features.Login
                 var bitmap = frame.ToBitmapSource();
                 bitmap.Freeze();
 
-                Application.Current.Dispatcher.BeginInvoke(() =>
+                Application.Current?.Dispatcher?.BeginInvoke(() =>
                 {
                     CurrentFrame = bitmap;
                 });
@@ -181,7 +181,7 @@ namespace EggClassifier.Features.Login
 
         private void OnWebcamError(object? sender, string message)
         {
-            Application.Current.Dispatcher.Invoke(() =>
+            Application.Current?.Dispatcher?.Invoke(() =>
             {
                 FaceStatusMessage = $"웹캠 오류: {message}";
                 IsWebcamActive = false;
