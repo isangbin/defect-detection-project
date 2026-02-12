@@ -10,11 +10,11 @@ none
 false
 TRACE;DEBUG;NET;NET8_0;NETCOREAPP;WINDOWS;WINDOWS7_0;NET5_0_OR_GREATER;NET6_0_OR_GREATER;NET7_0_OR_GREATER;NET8_0_OR_GREATER;NETCOREAPP3_0_OR_GREATER;NETCOREAPP3_1_OR_GREATER;WINDOWS7_0_OR_GREATER
 C:\Users\ysb\Desktop\Csharp\defect-detection-project\demo\EggClassifier\App.xaml
-42063795265
+51028520086
 
-22340501465
-208592395434
-Features\Dashboard\DashboardView.xaml;Features\Detection\DetectionView.xaml;Features\Login\LoginView.xaml;MainWindow.xaml;
+36-1932077590
+224-1351094842
+Features\Dashboard\DashboardView.xaml;Features\Detection\DetectionView.xaml;Features\Login\LoginView.xaml;Features\Login\SignUpView.xaml;MainWindow.xaml;
 
 False
 

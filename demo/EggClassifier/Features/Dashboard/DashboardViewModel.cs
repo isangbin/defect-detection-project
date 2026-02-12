@@ -148,6 +148,8 @@ namespace EggClassifier.Features.Dashboard
         {
             try
             {
+                if (imageData == null || imageData.Length == 0) return null;
+
                 using var ms = new MemoryStream(imageData);
                 var bitmap = new BitmapImage();
                 bitmap.BeginInit();
@@ -156,8 +158,10 @@ namespace EggClassifier.Features.Dashboard
                 bitmap.EndInit();
                 return bitmap;
             }
-            catch
+            catch (Exception ex)
             {
+                // 이미지가 안 나오는 구체적인 이유를 확인합니다.
+                LogMessage = $"이미지 변환 실패: {ex.Message}";
                 return null;
             }
         }
