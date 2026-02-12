@@ -8,6 +8,7 @@ namespace EggClassifier.Services
         event EventHandler<string>? ErrorOccurred;
 
         bool IsRunning { get; }
+        int CameraIndex { get; set; }
         bool Start();
         void Stop();
     }
