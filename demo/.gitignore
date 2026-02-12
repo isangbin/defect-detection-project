@@ -1,6 +1,6 @@
 # ── C# 빌드 산출물 ──
-bin/
-obj/
+**/bin/
+**/obj/
 *.dll
 *.exe
 *.pdb
@@ -24,7 +24,7 @@ data/images/
 data/labels/
 
 # ── IDE ──
-.vs/
+**/.vs/
 .vscode/
 *.user
 *.suo
