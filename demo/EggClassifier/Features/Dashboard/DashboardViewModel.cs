@@ -5,14 +5,20 @@ using Npgsql;
 using System;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq; // 데이터 비교를 위해 추가
+using System.Windows; // Dispatcher 사용을 위해 추가
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 
 namespace EggClassifier.Features.Dashboard
 {
     public partial class DashboardViewModel : ViewModelBase
     {
         private readonly string _connString = "Host=aws-1-ap-northeast-2.pooler.supabase.com;Port=6543;Database=postgres;Username=postgres.vvsdcdlazsqkwmaevmvq;Password=dlatkdqls1264";
+
+        // dashboard 화면갱신을 위함
+        private DispatcherTimer _refreshTimer;
 
         [ObservableProperty]
         private int _totalInspections = 0;
@@ -53,19 +59,28 @@ namespace EggClassifier.Features.Dashboard
         }
 
 
+        private void SetupTimer()
+        {
+            // 타이머 중복 생성 방지
+            if (_refreshTimer != null) return;
 
-
-
-
+            _refreshTimer = new DispatcherTimer();
+            _refreshTimer.Interval = TimeSpan.FromSeconds(1); // 1초마다 갱신
+            _refreshTimer.Tick += (s, e) => LoadStatistics();
+            _refreshTimer.Start();
+        }
 
         public DashboardViewModel()
         {
             LoadStatistics();
+            SetupTimer(); // 생성자에서 타이머 시작
         }
 
         // 필터 값이 변할때마다 자동으로 호출하여 갱신
         partial void OnSelectedClassFilterChanged(int value)
         {
+            // 필터 변경 시 리스트를 비우고 새로 불러와야 하므로 Clear 호출
+            _inspectionLogs.Clear();
             LoadStatistics();
         }
 
@@ -109,7 +124,9 @@ namespace EggClassifier.Features.Dashboard
                             DefectCount = Convert.ToInt32(reader["defective"]);
                         }
                     }
-                    _inspectionLogs.Clear();
+
+                    // 최신 로그 데이터를 임시로 담을 리스트
+                    var latestData = new System.Collections.Generic.List<EggLogItem>();
                     string logSql = @"
                         SELECT idx, user_id, egg_class, accuracy, inspect_date, egg_image
                         FROM egg 
@@ -124,7 +141,7 @@ namespace EggClassifier.Features.Dashboard
                         {
                             while (reader.Read())
                             {
-                                _inspectionLogs.Add(new EggLogItem
+                                latestData.Add(new EggLogItem
                                 {
                                     Idx = Convert.ToInt32(reader["idx"]),
                                     UserId = reader["user_id"].ToString(),
@@ -136,6 +153,33 @@ namespace EggClassifier.Features.Dashboard
                             }
                         }
                     }
+
+                    // UI 스레드에서 리스트의 변경된 부분만 업데이트하여 선택 상태 유지
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        // 리스트가 비어있으면 전체 추가
+                        if (_inspectionLogs.Count == 0)
+                        {
+                            foreach (var item in latestData) _inspectionLogs.Add(item);
+                        }
+                        else
+                        {
+                            // DB의 최신 데이터 중 현재 리스트에 없는 데이터만 맨 앞에 삽입
+                            foreach (var newItem in latestData.AsEnumerable().Reverse())
+                            {
+                                if (!_inspectionLogs.Any(x => x.Idx == newItem.Idx))
+                                {
+                                    _inspectionLogs.Insert(0, newItem);
+                                }
+                            }
+
+                            // 40개 초과 데이터 삭제
+                            while (_inspectionLogs.Count > 40)
+                            {
+                                _inspectionLogs.RemoveAt(_inspectionLogs.Count - 1);
+                            }
+                        }
+                    });
                 }
             }
             catch (Exception ex)
@@ -143,6 +187,7 @@ namespace EggClassifier.Features.Dashboard
                 LogMessage = $"데이터 로드 실패: {ex.Message}";
             }
         }
+
         // 이미지 변환 메서드
         private ImageSource? ByteArrayToImage(byte[] imageData)
         {
@@ -156,11 +201,14 @@ namespace EggClassifier.Features.Dashboard
                 bitmap.CacheOption = BitmapCacheOption.OnLoad;
                 bitmap.StreamSource = ms;
                 bitmap.EndInit();
+
+                // 스레드 안전성을 위해 Freeze 호출
+                bitmap.Freeze();
                 return bitmap;
             }
             catch (Exception ex)
             {
-                // 이미지가 안 나오는 구체적인 이유를 확인합니다.
+                // 이미지가 안 나오는 구체적인 이유를 확인
                 LogMessage = $"이미지 변환 실패: {ex.Message}";
                 return null;
             }
