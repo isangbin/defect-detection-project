@@ -82,10 +82,16 @@ namespace EggClassifier.Features.Detection
         private bool _canStop = false;
 
         [ObservableProperty]
-        private float _confidenceThreshold = 0.7f;
+        private float _confidenceThreshold = 0.3f;
 
         [ObservableProperty]
         private int _totalDetections;
+
+        [ObservableProperty]
+        private int _selectedCameraIndex = 0;
+
+        [ObservableProperty]
+        private string _cameraStatusText = "웹캠";
 
         [ObservableProperty]
         private Visibility _noDetectionVisibility = Visibility.Visible;
@@ -174,6 +180,35 @@ namespace EggClassifier.Features.Detection
                 StatusMessage = "모델 로드에 실패했습니다.";
                 CanStart = true;
             }
+        }
+
+        [RelayCommand]
+        private void SelectWebcam()
+        {
+            SelectedCameraIndex = 0;
+            CameraStatusText = "웹캠";
+            _webcamService.CameraIndex = 0;
+            StatusMessage = "웹캠이 선택되었습니다.";
+        }
+
+        [RelayCommand]
+        private void SelectPhoneCamera()
+        {
+            // DroidCam은 보통 인덱스 1 또는 2
+            // 먼저 1을 시도하고, 안되면 사용자가 수동으로 변경할 수 있도록
+            SelectedCameraIndex = 1;
+            CameraStatusText = "스마트폰 (인덱스: 1)";
+            _webcamService.CameraIndex = 1;
+            StatusMessage = "스마트폰 카메라(인덱스 1)가 선택되었습니다.\n안보이면 인덱스 2를 시도해보세요.";
+        }
+
+        [RelayCommand]
+        private void SelectPhoneCamera2()
+        {
+            SelectedCameraIndex = 2;
+            CameraStatusText = "스마트폰 (인덱스: 2)";
+            _webcamService.CameraIndex = 2;
+            StatusMessage = "스마트폰 카메라(인덱스 2)가 선택되었습니다.";
         }
 
         [RelayCommand]
