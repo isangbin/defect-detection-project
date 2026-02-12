@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("EggClassifier")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e8eb197df8d069dc1cbc73129cf63241ab2d7235")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8f98e34124e945473d47527918687746239b11ad")]
 [assembly: System.Reflection.AssemblyProductAttribute("EggClassifier")]
 [assembly: System.Reflection.AssemblyTitleAttribute("EggClassifier")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
