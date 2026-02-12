@@ -152,6 +152,8 @@ namespace EggClassifier.Services
 
                     // 프레임 복사하여 이벤트 발생 (원본 보호)
                     var frameCopy = frame.Clone();
+                    // 좌우 반전 (거울 모드)
+                    Cv2.Flip(frameCopy, frameCopy, FlipMode.Y);
                     FrameCaptured?.Invoke(this, new FrameCapturedEventArgs(frameCopy, fps));
 
                     // 프레임 레이트 조절
