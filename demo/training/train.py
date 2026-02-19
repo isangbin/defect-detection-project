@@ -12,6 +12,7 @@ import cv2
 import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+import sys
 
 
 # ============================================================================
@@ -153,11 +154,11 @@ def preprocess_images(data_yaml: str, apply_clahe: bool = False):
 def train_model(
     data_yaml: str,
     model_size: str = "s",  # 기본값을 's'로 변경 (nano → small)
-    epochs: int = 150,  # 에포크 증가
+    epochs: int = 50,  # 에포크 증가
     imgsz: int = 640,
-    batch: int = 16,
+    batch: int = 8,
     device: str = "0",
-    project: str = "runs/detect",
+    project: str = "runs",
     name: str = "egg_classifier_advanced",
     # 고급 옵션
     optimizer: str = "auto",  # auto, SGD, Adam, AdamW
@@ -221,8 +222,9 @@ def train_model(
         "save": True,
         "save_period": 10,
         "plots": True,
-        "verbose": True,
-        "workers": 4,
+        "verbose": False,
+        "workers": 8,
+        "exist_ok": True,
         # Optimizer & Learning Rate
         "optimizer": optimizer,
         "lr0": 0.01,  # 초기 learning rate
@@ -258,7 +260,6 @@ def train_model(
                 "mixup": 0.1,  # MixUp (이미지 혼합) ← 새로 추가!
                 "copy_paste": 0.1,  # CopyPaste (객체 복붙) ← 새로 추가!
                 # 품질 증강
-                "blur": 0.0,  # 블러 (0~1)
                 "auto_augment": "randaugment",  # AutoAugment
                 "erasing": 0.4,  # Random Erasing
             }
@@ -309,12 +310,13 @@ def train_model(
         print(f"  Recall:      {metrics.get('metrics/recall(B)', 0):.4f}")
 
     # models 폴더로 best.pt 복사
-    models_dir = Path(__file__).parent.parent / 'models'
+    models_dir = Path(__file__).parent.parent / "models"
     models_dir.mkdir(exist_ok=True)
 
-    final_model_path = models_dir / 'egg_classifier_best.pt'
+    final_model_path = models_dir / "egg_classifier_best.pt"
     if best_model.exists():
         import shutil
+
         shutil.copy2(best_model, final_model_path)
         print(f"\n📁 모델 복사 완료: {final_model_path}")
 
@@ -322,7 +324,9 @@ def train_model(
     print("💡 다음 단계:")
     print("  1. 학습 결과 확인: runs/detect/{}/".format(name))
     print("  2. ONNX 내보내기: python export_onnx.py")
-    print("  3. 검증 실행: python train.py --validate-only ../models/egg_classifier_best.pt")
+    print(
+        "  3. 검증 실행: python train.py --validate-only ../models/egg_classifier_best.pt"
+    )
     print("=" * 60 + "\n")
 
     return final_model_path
@@ -420,9 +424,9 @@ if __name__ == "__main__":
         choices=["n", "s", "m", "l", "x"],
         help="모델 크기 (s=추천, m=고성능)",
     )
-    parser.add_argument("--epochs", type=int, default=150, help="에포크 수 (기본 150)")
+    parser.add_argument("--epochs", type=int, default=40, help="에포크 수")
     parser.add_argument("--imgsz", type=int, default=640, help="입력 이미지 크기")
-    parser.add_argument("--batch", type=int, default=16, help="배치 크기")
+    parser.add_argument("--batch", type=int, default=8, help="배치 크기")
     parser.add_argument("--device", type=str, default="0", help="GPU 장치 (0) 또는 cpu")
     parser.add_argument(
         "--name", type=str, default="egg_classifier_advanced", help="실험 이름"

@@ -11,6 +11,7 @@ import shutil
 def export_to_onnx(
     model_path: str,
     output_dir: str = '../models',
+    output_name: str = 'egg_classifier.onnx',
     imgsz: int = 640,
     simplify: bool = True,
     opset: int = 12,
@@ -52,9 +53,18 @@ def export_to_onnx(
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    final_path = output_path / 'egg_classifier.onnx'
-    shutil.copy2(export_path, final_path)
+    # 동일 파일명 존재 시 덮어쓰기 방지 (자동 번호 부여)
+    final_path = output_path / output_name
+    if final_path.exists():
+        stem = final_path.stem
+        suffix = final_path.suffix
+        counter = 1
+        while final_path.exists():
+            final_path = output_path / f"{stem}_{counter}{suffix}"
+            counter += 1
+        print(f"  ※ 동일 파일명 존재 → {final_path.name} 으로 저장")
 
+    shutil.copy2(export_path, final_path)
     print(f"Copied to: {final_path}")
 
     # 모델 정보 출력
@@ -118,6 +128,8 @@ if __name__ == '__main__':
     parser.add_argument('--model', type=str, default='../models/egg_classifier_best.pt',
                         help='Path to trained .pt model')
     parser.add_argument('--output', type=str, default='../models', help='Output directory')
+    parser.add_argument('--name', type=str, default='egg_classifier.onnx',
+                        help='출력 ONNX 파일명 (예: egg_classifier_v2.onnx)')
     parser.add_argument('--imgsz', type=int, default=640, help='Input image size')
     parser.add_argument('--no-simplify', action='store_true', help='Disable ONNX simplification')
     parser.add_argument('--opset', type=int, default=12, help='ONNX opset version')
@@ -129,6 +141,7 @@ if __name__ == '__main__':
     onnx_path = export_to_onnx(
         model_path=args.model,
         output_dir=args.output,
+        output_name=args.name,
         imgsz=args.imgsz,
         simplify=not args.no_simplify,
         opset=args.opset,

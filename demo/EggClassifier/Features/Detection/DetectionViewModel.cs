@@ -142,14 +142,17 @@ namespace EggClassifier.Features.Detection
             _webcamService.ErrorOccurred -= OnWebcamError;
         }
 
+        // ↓ 모델 교체 시 여기만 변경하세요
+        private const string ModelFileName = "egg_classifier.onnx";
+
         private void LoadModel()
         {
             string[] searchPaths = new[]
             {
-                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models", "egg_classifier.onnx"),
-                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "egg_classifier.onnx"),
-                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "Models", "egg_classifier.onnx"),
-                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "models", "egg_classifier.onnx"),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models", ModelFileName),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ModelFileName),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "Models", ModelFileName),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "models", ModelFileName),
             };
 
             string? modelPath = searchPaths.FirstOrDefault(File.Exists);

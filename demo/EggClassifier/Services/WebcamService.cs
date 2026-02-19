@@ -50,9 +50,21 @@ namespace EggClassifier.Services
 
             try
             {
-                _capture = new VideoCapture(CameraIndex, VideoCaptureAPIs.DSHOW);
+                // 여러 API를 순서대로 시도 (DSHOW → MSMF)
+                var apis = new[] { VideoCaptureAPIs.DSHOW, VideoCaptureAPIs.MSMF };
+                foreach (var api in apis)
+                {
+                    _capture = new VideoCapture(CameraIndex, api);
+                    if (_capture.IsOpened())
+                    {
+                        Console.WriteLine($"Webcam opened with API: {api}");
+                        break;
+                    }
+                    _capture.Dispose();
+                    _capture = null;
+                }
 
-                if (!_capture.IsOpened())
+                if (_capture == null || !_capture.IsOpened())
                 {
                     ErrorOccurred?.Invoke(this, "웹캠을 열 수 없습니다. 카메라가 연결되어 있는지 확인하세요.");
                     return false;
