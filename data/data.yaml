@@ -2,7 +2,7 @@
 # 이 파일은 convert_xml_to_yolo.py 실행 후 자동 생성됩니다.
 # 수동 설정 시 아래 내용을 수정하세요.
 
-path: C:/Users/tedya/source/repos/Smart_Factory/project/project_CSharp/data
+path: D:/repos/Smart_Factory/project_CSharp/data
 train: images/train
 val: images/val
 

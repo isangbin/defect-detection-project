@@ -8,9 +8,10 @@ YOLOv8 + MobileFaceNet 기반 **계란 품질 실시간 분류 시스템** (WPF 
 - **런타임**: .NET 8.0, WPF (net8.0-windows)
 - **MVVM**: CommunityToolkit.Mvvm 8.2.2 ([ObservableProperty], [RelayCommand], partial class)
 - **DI**: Microsoft.Extensions.DependencyInjection 8.0.1
-- **백엔드**: Supabase (PostgreSQL), supabase-csharp 0.16.2
+- **백엔드**: Supabase (PostgreSQL), supabase-csharp 0.16.2, Npgsql 10.0.1
 - **AI 추론**: Microsoft.ML.OnnxRuntime 1.16.3
-- **영상 처리**: OpenCvSharp4 4.9.0 (+ WpfExtensions)
+- **영상 처리**: OpenCvSharp4 4.9.0.20240103 (+ Extensions, WpfExtensions, runtime.win)
+- **그래픽**: System.Drawing.Common 8.0.1
 - **학습**: Python 3.13, Ultralytics YOLOv8, PyTorch (CUDA 12.4)
 
 ## 프로젝트 루트 경로
@@ -146,9 +147,22 @@ dotnet run
 - 사용자 데이터: `bin/Debug/net8.0-windows/userdata/`
 
 ## 모델 파일 경로 규칙
-- 계란 분류: `Models/egg_classifier.onnx` (csproj CopyToOutputDirectory)
-- 얼굴 모델: `demo/models/` 폴더에서 검색 (`../../../../models/` 상대 경로)
-- 새 모델 추가 시 csproj에 CopyToOutputDirectory 규칙 추가 필요
+모든 ONNX 모델 파일은 `Models/` 폴더에 배치되며, csproj 설정에 따라 빌드 출력 폴더로 자동 복사됩니다.
+
+**현재 등록된 모델 파일:**
+- `Models/egg_classifier.onnx` — 계란 분류 YOLOv8 모델
+- `Models/haarcascade_frontalface_default.xml` — 얼굴 탐지 Haar Cascade
+- `Models/mobilefacenet.onnx` — 얼굴 임베딩 추출 모델
+
+**새 모델 추가 시:**
+1. `demo/EggClassifier/Models/` 폴더에 파일 배치
+2. `EggClassifier.csproj`에 다음 형식으로 추가:
+```xml
+<None Update="Models/your_model.onnx">
+  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+</None>
+```
+3. 런타임에는 `bin/Debug/net8.0-windows/Models/` 경로에서 접근
 
 ## 코드 컨벤션
 - 클래스/메서드: PascalCase
@@ -187,6 +201,24 @@ dotnet run
 - **검사 로그 저장**: DetectionViewModel에서 InspectionService.SaveInspectionAsync() 호출 필요
 
 ## Supabase 설정
-- **appsettings.json**: Supabase URL과 API Key 설정 필요
-- **DB 스키마**: users, egg 테이블 생성 (demo/EggClassifier/docs/SUPABASE_BACKEND.md 참고)
-- **레거시 마이그레이션**: JSON 파일 → Supabase 이전 방법은 SUPABASE_BACKEND.md 참고
+
+### appsettings.json 구조
+프로젝트 루트에 `appsettings.json` 파일을 생성하고 다음 형식으로 설정:
+```json
+{
+  "Supabase": {
+    "Url": "https://your-project-id.supabase.co",
+    "Key": "your-anon-public-key"
+  }
+}
+```
+- **Url**: Supabase 프로젝트 대시보드의 Project URL
+- **Key**: Supabase 프로젝트 Settings > API > anon/public key
+
+### 데이터베이스 스키마
+- **users 테이블**: 사용자 인증 정보 + 얼굴 임베딩 (user_face 컬럼, float[] 배열)
+- **egg 테이블**: 검사 로그 (사용자별 계란 분류 결과 + 이미지)
+- 상세 스키마 정보: `demo/EggClassifier/docs/SUPABASE_BACKEND.md` 참고
+
+### 레거시 마이그레이션
+JSON 파일 방식 → Supabase 이전 방법은 SUPABASE_BACKEND.md 참고

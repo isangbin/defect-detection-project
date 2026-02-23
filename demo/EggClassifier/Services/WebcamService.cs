@@ -35,7 +35,7 @@ namespace EggClassifier.Services
         public event EventHandler<string>? ErrorOccurred;
 
         public bool IsRunning => _captureTask != null && !_captureTask.IsCompleted;
-        public int CameraIndex { get; set; } = 0;
+        public int CameraIndex { get; set; } = 1;  // 웹캠: 1, DroidCam: 2
         public int FrameWidth { get; set; } = 640;
         public int FrameHeight { get; set; } = 480;
         public int TargetFps { get; set; } = 30;
@@ -52,8 +52,10 @@ namespace EggClassifier.Services
             {
                 _capture = new VideoCapture(CameraIndex, VideoCaptureAPIs.DSHOW);
 
-                if (!_capture.IsOpened())
+                if (_capture == null || !_capture.IsOpened())
                 {
+                    _capture?.Dispose();
+                    _capture = null;
                     ErrorOccurred?.Invoke(this, "웹캠을 열 수 없습니다. 카메라가 연결되어 있는지 확인하세요.");
                     return false;
                 }
