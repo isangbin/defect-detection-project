@@ -25,11 +25,6 @@ namespace EggClassifier.Services
     /// </summary>
     public class WebcamService : IWebcamService
     {
-        // ★ 카메라 인덱스 설정
-        // -1 : 자동 탐색 (DSHOW로 열리는 첫 번째 인덱스 사용)
-        //  0, 1, 2... : 해당 인덱스 고정 사용
-        private const int FIXED_CAMERA_INDEX = -1;
-
         private VideoCapture? _capture;
         private CancellationTokenSource? _cts;
         private Task? _captureTask;
@@ -40,7 +35,7 @@ namespace EggClassifier.Services
         public event EventHandler<string>? ErrorOccurred;
 
         public bool IsRunning => _captureTask != null && !_captureTask.IsCompleted;
-        public int CameraIndex { get; set; } = 0;
+        public int CameraIndex { get; set; } = 1;  // 웹캠: 1, DroidCam: 2
         public int FrameWidth { get; set; } = 640;
         public int FrameHeight { get; set; } = 480;
         public int TargetFps { get; set; } = 30;
@@ -55,27 +50,7 @@ namespace EggClassifier.Services
 
             try
             {
-                if (FIXED_CAMERA_INDEX >= 0)
-                {
-                    // 고정 인덱스 사용
-                    CameraIndex = FIXED_CAMERA_INDEX;
-                    _capture = new VideoCapture(CameraIndex, VideoCaptureAPIs.DSHOW);
-                }
-                else
-                {
-                    // 자동 탐색: DSHOW로 열리는 첫 번째 인덱스
-                    for (int i = 0; i <= 4; i++)
-                    {
-                        _capture = new VideoCapture(i, VideoCaptureAPIs.DSHOW);
-                        if (_capture.IsOpened())
-                        {
-                            CameraIndex = i;
-                            break;
-                        }
-                        _capture.Dispose();
-                        _capture = null;
-                    }
-                }
+                _capture = new VideoCapture(CameraIndex, VideoCaptureAPIs.DSHOW);
 
                 if (_capture == null || !_capture.IsOpened())
                 {
