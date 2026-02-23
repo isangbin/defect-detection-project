@@ -67,18 +67,18 @@ EggClassifier/
 │   ├── IInspectionService.cs       # 검사 로그 서비스 인터페이스
 │   └── InspectionService.cs        # Supabase 기반 검사 로그 저장
 ├── Features/
-│   ├── Detection/                  # 팀원A: 계란 분류
+│   ├── Detection/                  # 계란 분류
 │   │   ├── DetectionView.xaml
 │   │   ├── DetectionView.xaml.cs
 │   │   └── DetectionViewModel.cs
-│   ├── Login/                      # 팀원B: 로그인 + 회원가입
+│   ├── Login/                      # 로그인 + 회원가입
 │   │   ├── LoginView.xaml          # 2단계 로그인 UI (자격증명 → 얼굴인증)
 │   │   ├── LoginView.xaml.cs
 │   │   ├── LoginViewModel.cs       # 2단계 로그인 로직 (비밀번호 + 얼굴 2FA)
 │   │   ├── SignUpView.xaml          # 회원가입 UI (폼 + 웹캠 얼굴 촬영)
 │   │   ├── SignUpView.xaml.cs
 │   │   └── SignUpViewModel.cs       # 회원가입 로직 (얼굴 이미지 저장)
-│   └── Dashboard/                  # 팀원C: DB 시각화
+│   └── Dashboard/                  # DB 시각화
 │       ├── DashboardView.xaml
 │       ├── DashboardView.xaml.cs
 │       └── DashboardViewModel.cs
@@ -104,13 +104,13 @@ EggClassifier/
 
 ### 2. Supabase 설정
 
-`appsettings.json` 파일에 Supabase 연결 정보를 입력하세요:
+`appsettings.json` 파일에 Supabase 연결 정보를 입력:
 
 ```json
 {
   "Supabase": {
-    "Url": "https://your-project-id.supabase.co",
-    "Key": "your-anon-public-key"
+    "Url": "https://vvsdcdlazsqkwmaevmvq.supabase.co",
+    "Key": ""
   }
 }
 ```
