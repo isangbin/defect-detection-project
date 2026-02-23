@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:system="clr-namespace:System;assembly=mscorlib"
              mc:Ignorable="d"
              d:DesignHeight="680" d:DesignWidth="1060">
 
@@ -116,11 +117,13 @@
                         <Button Content="&#x1F4F7; 웹캠"
                                 Style="{StaticResource PrimaryButtonStyle}"
                                 Command="{Binding SelectWebcamCommand}"
+                                IsEnabled="{Binding CanSelectCamera}"
                                 Margin="0,0,5,0"/>
                         <Button Grid.Column="1"
                                 Content="&#x1F4F1; 스마트폰"
                                 Style="{StaticResource PrimaryButtonStyle}"
                                 Command="{Binding SelectPhoneCamera2Command}"
+                                IsEnabled="{Binding CanSelectCamera}"
                                 Margin="5,0,0,0"/>
                     </Grid>
 
@@ -183,7 +186,10 @@
                                Margin="0,0,0,10"/>
 
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                        <StackPanel>
+                        <ScrollViewer.Resources>
+                            <system:Double x:Key="{x:Static SystemParameters.VerticalScrollBarWidthKey}">6</system:Double>
+                        </ScrollViewer.Resources>
+                        <StackPanel Margin="0,0,10,0">
                             <ItemsControl ItemsSource="{Binding ClassCounts}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>

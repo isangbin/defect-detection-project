@@ -15,5 +15,10 @@ namespace EggClassifier
                 viewModel.NavigateToLoginCommand.Execute(null);
             };
         }
+
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
     }
 }

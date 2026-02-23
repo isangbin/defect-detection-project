@@ -1,0 +1,19 @@
+# 모델 파일 (용량 초과로 git 제외)
+demo/models/arcface_old.onnx
+
+# Build outputs
+**/bin/
+**/obj/
+
+# Visual Studio
+.vs/
+*.user
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# OS
+.DS_Store
+Thumbs.db

@@ -26,7 +26,7 @@ namespace EggClassifier.Services
         {
             YoloDetector.DrawDetections(image, detections);
         }
-
+        // test
         public void Dispose()
         {
             _detector.Dispose();

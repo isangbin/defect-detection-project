@@ -82,6 +82,9 @@ namespace EggClassifier.Features.Detection
         private bool _canStop = false;
 
         [ObservableProperty]
+        private bool _canSelectCamera = true;
+
+        [ObservableProperty]
         private float _confidenceThreshold = 0.3f;
 
         [ObservableProperty]
@@ -221,6 +224,7 @@ namespace EggClassifier.Features.Detection
             {
                 CanStart = false;
                 CanStop = true;
+                CanSelectCamera = false;
                 OverlayVisibility = Visibility.Collapsed;
 
                 foreach (var item in ClassCounts)
@@ -244,6 +248,7 @@ namespace EggClassifier.Features.Detection
             _webcamService.Stop();
             CanStart = true;
             CanStop = false;
+            CanSelectCamera = true;
             OverlayVisibility = Visibility.Visible;
             StatusMessage = "중지됨. 시작 버튼을 눌러 재시작하세요.";
             FpsText = "FPS: --";
