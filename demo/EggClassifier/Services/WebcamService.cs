@@ -50,25 +50,17 @@ namespace EggClassifier.Services
 
             try
             {
-                // 여러 API를 순서대로 시도 (DSHOW → MSMF)
-                var apis = new[] { VideoCaptureAPIs.DSHOW, VideoCaptureAPIs.MSMF };
-                foreach (var api in apis)
+                _capture = new VideoCapture(CameraIndex, VideoCaptureAPIs.DSHOW);
+
+                if (!_capture.IsOpened())
                 {
-                    _capture = new VideoCapture(CameraIndex, api);
-                    if (_capture.IsOpened())
-                    {
-                        Console.WriteLine($"Webcam opened with API: {api}");
-                        break;
-                    }
                     _capture.Dispose();
                     _capture = null;
-                }
-
-                if (_capture == null || !_capture.IsOpened())
-                {
                     ErrorOccurred?.Invoke(this, "웹캠을 열 수 없습니다. 카메라가 연결되어 있는지 확인하세요.");
                     return false;
                 }
+
+                Console.WriteLine("Webcam opened with API: DSHOW");
 
                 // MJPG 코덱 설정 (비압축보다 전송 빠름)
                 _capture.Set(VideoCaptureProperties.FourCC, VideoWriter.FourCC('M', 'J', 'P', 'G'));
