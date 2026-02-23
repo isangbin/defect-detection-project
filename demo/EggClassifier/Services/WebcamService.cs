@@ -25,6 +25,11 @@ namespace EggClassifier.Services
     /// </summary>
     public class WebcamService : IWebcamService
     {
+        // ★ 카메라 인덱스 설정
+        // -1 : 자동 탐색 (DSHOW로 열리는 첫 번째 인덱스 사용)
+        //  0, 1, 2... : 해당 인덱스 고정 사용
+        private const int FIXED_CAMERA_INDEX = -1;
+
         private VideoCapture? _capture;
         private CancellationTokenSource? _cts;
         private Task? _captureTask;
@@ -50,17 +55,35 @@ namespace EggClassifier.Services
 
             try
             {
-                _capture = new VideoCapture(CameraIndex, VideoCaptureAPIs.DSHOW);
-
-                if (!_capture.IsOpened())
+                if (FIXED_CAMERA_INDEX >= 0)
                 {
-                    _capture.Dispose();
+                    // 고정 인덱스 사용
+                    CameraIndex = FIXED_CAMERA_INDEX;
+                    _capture = new VideoCapture(CameraIndex, VideoCaptureAPIs.DSHOW);
+                }
+                else
+                {
+                    // 자동 탐색: DSHOW로 열리는 첫 번째 인덱스
+                    for (int i = 0; i <= 4; i++)
+                    {
+                        _capture = new VideoCapture(i, VideoCaptureAPIs.DSHOW);
+                        if (_capture.IsOpened())
+                        {
+                            CameraIndex = i;
+                            break;
+                        }
+                        _capture.Dispose();
+                        _capture = null;
+                    }
+                }
+
+                if (_capture == null || !_capture.IsOpened())
+                {
+                    _capture?.Dispose();
                     _capture = null;
                     ErrorOccurred?.Invoke(this, "웹캠을 열 수 없습니다. 카메라가 연결되어 있는지 확인하세요.");
                     return false;
                 }
-
-                Console.WriteLine("Webcam opened with API: DSHOW");
 
                 // MJPG 코덱 설정 (비압축보다 전송 빠름)
                 _capture.Set(VideoCaptureProperties.FourCC, VideoWriter.FourCC('M', 'J', 'P', 'G'));
