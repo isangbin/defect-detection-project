@@ -201,8 +201,9 @@ namespace EggClassifier.Services
 
                     // 프레임 복사하여 이벤트 발생 (원본 보호)
                     var frameCopy = frame.Clone();
-                    // 좌우 반전 (거울 모드)
-                    Cv2.Flip(frameCopy, frameCopy, FlipMode.Y);
+                    // 웹캠(인덱스 0)만 거울 모드 적용, 스마트폰은 정방향
+                    if (CameraIndex == 0)
+                        Cv2.Flip(frameCopy, frameCopy, FlipMode.Y);
                     FrameCaptured?.Invoke(this, new FrameCapturedEventArgs(frameCopy, fps));
 
                     // 처리 시간을 고려한 정밀 대기
